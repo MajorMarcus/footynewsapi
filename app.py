@@ -1,6 +1,10 @@
 from flask import Flask, request, jsonify
 from bs4 import BeautifulSoup
 import requests
+import urllib.parse
+
+
+
 
 app = Flask(__name__)
 
@@ -22,7 +26,8 @@ def scrape():
             subtitle = article.find('p', class_='NewsTeaser_teaser__preview__ZRFyi').text
             img_tag = article.find('img', class_='ImageWithSets_of-image__img__pezo7 teaser__img')
             img_url = img_tag['src'] if img_tag else None
-            
+            img_url =img_url
+            img_url = urllib.parse.unquote(img_url)
             news_items.append({
                 'title': title,
                 'subtitle': subtitle,
