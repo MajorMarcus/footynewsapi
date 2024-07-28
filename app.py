@@ -4,6 +4,21 @@ import requests
 import urllib.parse
 
 
+def extract_actual_url(url):
+    
+    # Find the position where the actual image URL starts
+    key = "image="
+    start = url.find(key)
+    if start == -1:
+        return None
+
+    # Extract the part after 'image='
+    encoded_url = url[start + len(key):]
+
+    # Decode the URL-encoded string
+    actual_url = urllib.parse.unquote(encoded_url)
+    
+    return actual_url
 
 
 app = Flask(__name__)
@@ -28,6 +43,7 @@ def scrape():
             img_url = img_tag['src'] if img_tag else None
             img_url =img_url
             img_url = urllib.parse.unquote(img_url)
+            img_url = extract_actual_url(img_url)
             news_items.append({
                 'title': title,
                 'subtitle': subtitle,
