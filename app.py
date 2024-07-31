@@ -66,14 +66,16 @@ def scrape():
 
                 # Print the extracted text
                 for idx, text in enumerate(all_paragraph_texts, 1):
+                    text = text.encode('utf-8').decode('unicode_escape')
                     newscontents.append(text)
+                newscontent = '. '.join(newcontents)
             
                     
                
 
             news_items.append({
                 'title': title,
-                'article_content': newscontents,
+                'article_content': newscontent,
                 'img_url': img_url,
                 'article_url': article_url,
                 
