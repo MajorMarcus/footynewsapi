@@ -66,7 +66,7 @@ def scrape():
 
                 # Print the extracted text
                 for idx, text in enumerate(all_paragraph_texts, 1):
-                    newscontents.append(text.text())
+                    newscontents.append(text)
             
                     
                
