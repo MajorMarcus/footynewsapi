@@ -68,7 +68,7 @@ def scrape():
                 for idx, text in enumerate(all_paragraph_texts, 1):
                     text = text.encode('utf-8').decode('unicode_escape')
                     newscontents.append(text)
-                newscontent = '. '.join(newcontents)
+                newscontent = '. '.join(newscontents)
             
                     
                
