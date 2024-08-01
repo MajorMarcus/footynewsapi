@@ -2,6 +2,35 @@ from flask import Flask, request, jsonify
 from bs4 import BeautifulSoup
 import requests
 import urllib.parse
+from unidecode import unidecode
+
+def extract_text_with_spacing(html_content):
+    soup = BeautifulSoup(html_content, 'html.parser')
+    text_elements = []
+    
+    for p in soup.find_all('p'):
+        # Get text from each paragraph, handling href links
+        paragraph_text = []
+        for element in p.children:
+            if element.name == 'a':
+                # Handle links: include text before and after links
+                paragraph_text.append(element.get_text())
+            elif element.name is None:  # It's a NavigableString
+                paragraph_text.append(element.strip())
+        
+        text_elements.append(' '.join(paragraph_text))
+    s = ''
+    text_elements = s.join(text_elements)
+    return text_elements
+
+def join_text_elements(text_elements):
+    # Join the text elements with a space between them
+    return ' '.join(text_elements).strip()
+
+def decode(text):
+    text1= text.encode('utf-8').decode('unicode_escape')
+    text2 = text1.encode('latin1')
+    return text2
 
 
 def extract_actual_url(url):
@@ -33,6 +62,7 @@ def scrape():
     try:
         response = requests.get(url)
         soup = BeautifulSoup(response.text, 'html.parser')
+        
 
         news_items = []
 
@@ -58,24 +88,16 @@ def scrape():
                 
                 i = article_soup.find('div', class_='XpaLayout_xpaLayoutContainerGridItemComponents__MaerZ')
                 paragraph_divs = article_soup.find_all('div', class_='ArticleParagraph_articleParagraph__MrxYL')
-                all_paragraph_texts = []
-                for div in paragraph_divs:
-                    p_tags = div.find_all('p')
-                    for p in p_tags:
-                        all_paragraph_texts.append(p.get_text(strip=True))
-
-                # Print the extracted text
-                for idx, text in enumerate(all_paragraph_texts, 1):
-                    text = text.encode('utf-8').decode('unicode_escape')
-                    newscontents.append(text)
-                newscontent = '. '.join(newscontents)
-            
+                if paragraph_divs:
+                    text_elements = extract_text_with_spacing(str(paragraph_divs))
+                    
+            text_elements = unidecode(text_elements)
                     
                
 
             news_items.append({
                 'title': title,
-                'article_content': newscontent,
+                'article_content': text_elements,
                 'img_url': img_url,
                 'article_url': article_url,
                 
