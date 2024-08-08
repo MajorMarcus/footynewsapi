@@ -5,16 +5,7 @@ import urllib.parse
 from unidecode import unidecode
 
 
-def get_image_height(url):
-    # Fetch the image
-    response = requests.get(url)
-    if response.status_code == 200:
-        # Open the image
-        img = Image.open(BytesIO(response.content))
-        # Return the height
-        return img.height
-    else:
-        raise Exception(f"Failed to retrieve image from {url}. Status code: {response.status_code}")
+
 
 def extract_text_with_spacing(html_content):
     soup = BeautifulSoup(html_content, 'html.parser')
@@ -84,7 +75,7 @@ def scrape():
             img_url = img_tag['src'] if img_tag else None
             img_url = urllib.parse.unquote(img_url) if img_url else None
             img_url = extract_actual_url(img_url) if img_url else None
-            imgheight = get_img_height(img_url)
+       
 
             # Extract the link to the full article
             article_link_tag = article.find('a', href=True)
@@ -112,7 +103,6 @@ def scrape():
                 'title': title,
                 'article_content': text_elements,
                 'img_url': img_url,
-                'img_height': img_height
                 'article_url': article_url,
                 
             })
