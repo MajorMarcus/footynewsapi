@@ -69,7 +69,7 @@ def scrape():
 
         news_items = []
 
-        for article in soup.find_all('article', class_='NewsTeaser_teaser__BR1_B'):
+        for article in soup.find_all('article'):
             title = article.find('p', class_='NewsTeaser_teaser__title__OsMxr').text
             img_tag = article.find('img', class_='ImageWithSets_of-image__img__pezo7 teaser__img')
             img_url = img_tag['src'] if img_tag else None
