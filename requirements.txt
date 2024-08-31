@@ -3,3 +3,4 @@ gunicorn
 bs4
 requests
 unidecode
+aiohttp
