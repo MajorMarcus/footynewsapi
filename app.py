@@ -7,6 +7,21 @@ from unidecode import unidecode
 
 app = Flask(__name__)
 
+
+def truncate_after_extension(s):
+    # Define a regex pattern to find the end of an image URL based on common extensions
+    pattern = re.compile(r'\.(jpg|jpeg|png|gif|bmp|webp)(\?|$)', re.IGNORECASE)
+    # Search for the image URL pattern
+    match = pattern.search(s)
+    if match:
+        # Extract the end position of the matched extension and return the substring before it
+        end_position = match.end()
+        return s[:end_position].strip()
+    else:
+        # No matching extension found, return the original string
+        return s
+
+
 async def fetch(session, url):
     async with session.get(url) as response:
         return await response.text()
@@ -56,7 +71,7 @@ async def scrape_news_items(team):
                     link = teaser['link']
                     title2 = teaser['title']
                     image = extract_actual_url(urllib.parse.unquote(teaser['imageObject']['path']) if teaser['imageObject']['path'] else "")
-
+                    image = truncate_after_extension(image)
                     tasks.append(scrape_article(session, link, title2, image))
 
                     if i == 5 and teasers is containers[5]['fullWidth']['component']['gallery']['teasers']:
