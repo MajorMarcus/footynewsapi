@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import aiohttp
 import asyncio
 import urllib.parse
+import re
 from unidecode import unidecode
 
 app = Flask(__name__)
