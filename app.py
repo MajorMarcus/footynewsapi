@@ -3,14 +3,9 @@ from bs4 import BeautifulSoup
 import aiohttp
 import asyncio
 import urllib.parse
-import re
 from unidecode import unidecode
 
 app = Flask(__name__)
-
-
-
-
 
 async def fetch(session, url):
     async with session.get(url) as response:
@@ -48,42 +43,57 @@ async def scrape_article(session, article_url, title, img_url):
         }
     return None
 
-async def scrape_news_items(team):
+async def scrape_news_items(team, before_id, needbeforeid):
     news_items = []
     async with aiohttp.ClientSession() as session:
-        for j in range(20):
-            response = await fetch_json(session, f'https://api.onefootball.com/web-experience/en/team/{team}/news')
-            containers = response.get('containers', [])
+        url = f'https://api.onefootball.com/web-experience/en/team/{team}/news'
+        if needbeforeid:
+            url += f'?before_id={before_id}'
 
-            for teasers in [containers[3]['fullWidth']['component']['gallery']['teasers'], containers[5]['fullWidth']['component']['gallery']['teasers']]:
-                tasks = []
-                for i, teaser in enumerate(teasers):
-                    link = teaser['link']
-                    title2 = teaser['title']
-                    image = extract_actual_url(urllib.parse.unquote(teaser['imageObject']['path']) if teaser['imageObject']['path'] else "")
-                    image = image[:-12]
-                    tasks.append(scrape_article(session, link, title2, image))
+        response = await fetch_json(session, url)
+        containers = response.get('containers', [])
 
-                    if i == 5 and teasers is containers[5]['fullWidth']['component']['gallery']['teasers']:
-                        lasturl = teaser['id']
-                        more_news_response = await fetch_json(session, f'https://api.onefootball.com/web-experience/en/team/{team}/news?before_id={lasturl}')
-                        more_teasers = more_news_response.get('teasers', [])
-                        tasks.extend(scrape_article(session, t['link'], t['title'], extract_actual_url(urllib.parse.unquote(t['imageObject']['path']) if t['imageObject']['path'] else "")) for t in more_teasers)
-                
-                results = await asyncio.gather(*tasks)
-                news_items.extend(filter(None, results))
-            break
-    return news_items
+        teasers = []
+        if before_id:
+            teasers = response.get('teasers')
+        else:
+            if len(containers) > 3:
+                teasers = containers[3].get('fullWidth', {}).get('component', {}).get('gallery', {}).get('teasers', [])
+            
+            if len(containers) > 5:
+                teasers += containers[5].get('fullWidth', {}).get('component', {}).get('gallery', {}).get('teasers', [])
+
+        tasks = []
+        last_id = None
+        for teaser in teasers:
+            link = teaser['link']
+            title2 = teaser['title']
+            image = extract_actual_url(urllib.parse.unquote(teaser['imageObject']['path']) if teaser['imageObject']['path'] else "")
+            last_id = teaser['id']
+
+            tasks.append(scrape_article(session, link, title2, image))
+
+        results = await asyncio.gather(*tasks)
+        news_items.extend(filter(None, results))
+
+    return news_items, last_id
 
 @app.route('/scrape', methods=['GET'])
 async def scrape():
     url = request.args.get('url')
+    before_id = request.args.get('before_id')# Fetch the 'before_id' from the query parameters if provided
     if not url:
         return jsonify({'error': 'URL is required'}), 400
 
     team = url[32:-5]
-    news_items = await scrape_news_items(team)
-    return jsonify(news_items)
+    needbeforeid = False
+    if before_id:
+        needbeforeid = True
+    news_items, last_id = await scrape_news_items(team, before_id, needbeforeid=needbeforeid)
+    return jsonify({
+        'news_items': news_items,
+        'last_id': last_id  # Return the last ID so it can be used for the next page
+    })
 
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=False)
