@@ -7,15 +7,6 @@ from unidecode import unidecode
 
 app = Flask(__name__)
 
-def remove_after_jpg(text):
-    # Find the index of '.jpg' in the string
-    jpg_index = text.find('.jpg')
-    print(jpg_index)
-    if jpg_index :
-        # Slice the string up to the end of '.jpg'
-        return text[:-jpg_index+3]  # 4 is the length of '.jpg'
-    
-
 
 async def fetch(session, url):
     async with session.get(url) as response:
