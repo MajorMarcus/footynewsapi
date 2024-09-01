@@ -7,6 +7,16 @@ from unidecode import unidecode
 
 app = Flask(__name__)
 
+def remove_after_jpg(text):
+    # Find the index of '.jpg' in the string
+    jpg_index = text.find('.jpg')
+    print(jpg_index)
+    if jpg_index :
+        # Slice the string up to the end of '.jpg'
+        return text[:-jpg_index+3]  # 4 is the length of '.jpg'
+    
+
+
 async def fetch(session, url):
     async with session.get(url) as response:
         return await response.text()
@@ -69,6 +79,7 @@ async def scrape_news_items(team, before_id, needbeforeid):
             link = teaser['link']
             title2 = teaser['title']
             image = extract_actual_url(urllib.parse.unquote(teaser['imageObject']['path']) if teaser['imageObject']['path'] else "")
+            image = remove_after_jpg(image)
             last_id = teaser['id']
 
             tasks.append(scrape_article(session, link, title2, image))
