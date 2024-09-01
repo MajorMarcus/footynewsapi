@@ -70,7 +70,7 @@ async def scrape_news_items(team, before_id, needbeforeid):
             link = teaser['link']
             title2 = teaser['title']
             image = extract_actual_url(urllib.parse.unquote(teaser['imageObject']['path']) if teaser['imageObject']['path'] else "")
-           
+            image = image[:-12]
             last_id = teaser['id']
 
             tasks.append(scrape_article(session, link, title2, image))
