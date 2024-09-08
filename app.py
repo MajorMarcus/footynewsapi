@@ -34,6 +34,7 @@ async def scrape_article(session, article_url, title, img_url):
         article_response = await fetch(session, f"https://onefootball.com/{article_url}")
         article_soup = BeautifulSoup(article_response, 'html.parser')
         article_id = article_url[-8:]
+        img_url = img_url[:-12]
         paragraph_divs = article_soup.find_all('div', class_='ArticleParagraph_articleParagraph__MrxYL')
         text_elements = extract_text_with_spacing(str(paragraph_divs)) if paragraph_divs else ""
         return {
