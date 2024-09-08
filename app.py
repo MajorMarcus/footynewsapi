@@ -7,7 +7,6 @@ from unidecode import unidecode
 
 app = Flask(__name__)
 
-
 async def fetch(session, url):
     async with session.get(url) as response:
         return await response.text()
@@ -34,6 +33,7 @@ async def scrape_article(session, article_url, title, img_url):
     if article_url:
         article_response = await fetch(session, f"https://onefootball.com/{article_url}")
         article_soup = BeautifulSoup(article_response, 'html.parser')
+        article_id = article_url[-8:]
         paragraph_divs = article_soup.find_all('div', class_='ArticleParagraph_articleParagraph__MrxYL')
         text_elements = extract_text_with_spacing(str(paragraph_divs)) if paragraph_divs else ""
         return {
@@ -41,6 +41,7 @@ async def scrape_article(session, article_url, title, img_url):
             'article_content': unidecode(text_elements),
             'img_url': img_url,
             'article_url': article_url,
+            'article_id': article_id
         }
     return None
 
@@ -70,7 +71,6 @@ async def scrape_news_items(team, before_id, needbeforeid):
             link = teaser['link']
             title2 = teaser['title']
             image = extract_actual_url(urllib.parse.unquote(teaser['imageObject']['path']) if teaser['imageObject']['path'] else "")
-            image = image[:-12]
             last_id = teaser['id']
 
             tasks.append(scrape_article(session, link, title2, image))
@@ -99,4 +99,3 @@ async def scrape():
 
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=False)
-
