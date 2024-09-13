@@ -75,7 +75,7 @@ async def scrape_news_items(team, before_id, needbeforeid):
             time = teaser['publishTime']
             publisher = teaser['publisherName']
             image = extract_actual_url(urllib.parse.unquote(teaser['imageObject']['path']) if teaser['imageObject']['path'] else "")
-            image[:-12]
+            image = image[:-12]
             last_id = teaser['id']
 
             tasks.append(scrape_article(session, article_url=link, title=title2, img_url=image, time=time, publisher=publisher))
