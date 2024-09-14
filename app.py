@@ -4,6 +4,7 @@ import aiohttp
 import asyncio
 import urllib.parse
 from unidecode import unidecode
+import re
 
 app = Flask(__name__)
 
@@ -14,20 +15,37 @@ async def fetch(session, url):
 async def fetch_json(session, url):
     async with session.get(url) as response:
         return await response.json()
-
 def extract_text_with_spacing(html_content):
     soup = BeautifulSoup(html_content, 'html.parser')
-    return ' '.join(
-        ' '.join(element.get_text().strip() for element in p.children if element.name in ['a', None])
-        for p in soup.find_all('p')
-    )
+    imageattributions = []
+    pattern = r"\(Photo by [^)]+\)"
+    textelements = []
+    a = False
+    for p in soup.find_all('p'):
+        text = p.get_text()
+
+        match = re.search(pattern, text)
+        
+        # Remove the matched pattern from the text
+        text_without_attribution = re.sub(pattern, '', text).strip()
+        textelements.append(text_without_attribution)
+        
+        if match:
+            a = match.group()
+        
+            
+    return [' '.join(textelements), a]
+    
 
 def extract_actual_url(url):
     key = "image="
     start = url.find(key)
     if start == -1:
         return None
-    return urllib.parse.unquote(url[start + len(key):]).replace('width=720', '')
+    if 'betting' in url:
+        return False 
+    else:
+        return urllib.parse.unquote(url[start + len(key):]).replace('width=720', '')
 
 async def scrape_article(session, article_url, title, img_url, time, publisher):
     if article_url:
@@ -35,16 +53,32 @@ async def scrape_article(session, article_url, title, img_url, time, publisher):
         article_soup = BeautifulSoup(article_response, 'html.parser')
         article_id = article_url[-8:]
         paragraph_divs = article_soup.find_all('div', class_='ArticleParagraph_articleParagraph__MrxYL')
-        text_elements = extract_text_with_spacing(str(paragraph_divs)) if paragraph_divs else ""
-        return {
+        textlist = extract_text_with_spacing(str(paragraph_divs))
+        text_elements = textlist[0] if paragraph_divs else ""
+        
+        attribution = textlist[1]
+        
+        if attribution:
+            return {
             'title': title,
             'article_content': unidecode(text_elements),
             'img_url': img_url,
             'article_url': article_url,
             'article_id': article_id,
             'time':time, 
-            'publisher':publisher
-        }
+            'publisher':publisher, 
+            'attribution': attribution
+            }
+        elif attribution ==False:
+            return {
+            'title': title,
+            'article_content': unidecode(text_elements),
+            'img_url': img_url,
+            'article_url': article_url,
+            'article_id': article_id,
+            'time':time, 
+            'publisher':publisher, 
+            }
     return None
 
 async def scrape_news_items(team, before_id, needbeforeid):
@@ -70,15 +104,20 @@ async def scrape_news_items(team, before_id, needbeforeid):
         tasks = []
         last_id = None
         for teaser in teasers:
-            link = teaser['link']
-            title2 = teaser['title']
-            time = teaser['publishTime']
-            publisher = teaser['publisherName']
             image = extract_actual_url(urllib.parse.unquote(teaser['imageObject']['path']) if teaser['imageObject']['path'] else "")
             image = image[:-12]
-            last_id = teaser['id']
+            if image ==False:
+                pass
+            else:
+                link = teaser['link']
+                title2 = teaser['title']
+                time = teaser['publishTime']
+                publisher = teaser['publisherName']
+                image = image
+                
+                last_id = teaser['id']
 
-            tasks.append(scrape_article(session, article_url=link, title=title2, img_url=image, time=time, publisher=publisher))
+                tasks.append(scrape_article(session, article_url=link, title=title2, img_url=image, time=time, publisher=publisher))
 
         results = await asyncio.gather(*tasks)
         news_items.extend(filter(None, results))
@@ -104,3 +143,4 @@ async def scrape():
 
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=False)
+
