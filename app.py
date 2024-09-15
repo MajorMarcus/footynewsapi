@@ -44,6 +44,8 @@ def extract_actual_url(url):
         return None
     if 'betting' in url:
         return False 
+    elif 'squawka' in url:
+        return False
     else:
         return urllib.parse.unquote(url[start + len(key):]).replace('width=720', '')
 
