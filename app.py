@@ -105,10 +105,11 @@ async def scrape_news_items(team, before_id, needbeforeid):
         last_id = None
         for teaser in teasers:
             image = extract_actual_url(urllib.parse.unquote(teaser['imageObject']['path']) if teaser['imageObject']['path'] else "")
-            image = image[:-12]
+         
             if image ==False:
                 pass
             else:
+                image = image[:-12]
                 link = teaser['link']
                 title2 = teaser['title']
                 time = teaser['publishTime']
@@ -143,4 +144,3 @@ async def scrape():
 
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=False)
-
