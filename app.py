@@ -48,6 +48,8 @@ def extract_actual_url(url):
         return False
     elif "bit.ly" in url:
         return False
+    elif "footballtoday.com" in url:
+        return False
     else:
         return urllib.parse.unquote(url[start + len(key):]).replace('width=720', '')
 
