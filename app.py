@@ -112,7 +112,7 @@ async def scrape_news_items(team, before_id, needbeforeid):
         for teaser in teasers:
             image = extract_actual_url(urllib.parse.unquote(teaser['imageObject']['path']) if teaser['imageObject']['path'] else "")
          
-            if not image:
+            if image == null:
                 continue
             else:
                 image = image[:-12]
