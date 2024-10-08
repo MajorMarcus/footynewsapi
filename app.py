@@ -137,8 +137,9 @@ async def scrape():
     before_id = request.args.get('before_id')# Fetch the 'before_id' from the query parameters if provided
     if not url:
         return jsonify({'error': 'URL is required'}), 400
-
+    print(url)
     team = url[32:-5]
+    print(team)
     needbeforeid = False
     if before_id:
         needbeforeid = True
