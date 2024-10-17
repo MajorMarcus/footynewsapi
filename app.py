@@ -106,8 +106,10 @@ async def scrape_news_items(team, before_id, needbeforeid, womens):
         response = await fetch_json(session, url)
         containers = response.get('containers', [])
         teasers = response.get('teasers') if before_id else containers[3].get('fullWidth', {}).get('component', {}).get('gallery', {}).get('teasers', [])
-        teasers += containers[5].get('fullWidth', {}).get('component', {}).get('gallery', {}).get('teasers', [])
-
+        try:
+            teasers += containers[5].get('fullWidth', {}).get('component', {}).get('gallery', {}).get('teasers', [])
+        except:
+            pass                                
         tasks = []
         last_id = None
         for teaser in teasers:
@@ -134,12 +136,14 @@ async def scrape_news_items(team, before_id, needbeforeid, womens):
 async def scrape():
     url = request.args.get('url')
     womens = request.args.get('womens')
+    
     womens = eval(womens)
     before_id = request.args.get('before_id')
     if not url:
         return jsonify({'error': 'URL is required'}), 400
-
+    print(url[32:-5])
     team = url[32:-5]
+
     needbeforeid = bool(before_id)
     news_items, last_id = await scrape_news_items(team, before_id, needbeforeid=needbeforeid, womens=womens)
 
