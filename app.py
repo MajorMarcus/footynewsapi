@@ -92,7 +92,8 @@ async def scrape_article(session, article_url, title, img_url, time, publisher, 
                 'article_id': article_id,
                 'time': time,
                 'publisher': publisher,
-                'attribution': attribution or ''
+                'attribution': attribution or '', 
+                'article_url':article_url
             }
         return None
 
