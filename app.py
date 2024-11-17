@@ -3,8 +3,113 @@ from bs4 import BeautifulSoup
 import aiohttp
 import asyncio
 import urllib.parse
+import sqlite3
 from unidecode import unidecode
+import os
+
+from groq import Groq
+
+client = Groq(
+    api_key='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',
+)
+
+
+def response(cont):
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": """rephrase this text with similar wordcount. dont change out any of the names, football keywords related to transfers news or any playernames. u may change the structure of the sentence or switch out any arbitrary words that dont change the meaning of the sentence or the text in whole.just reply with the text and not anything other like here is the rephrased text with around the same word count. here's the text:
+                """+"'"+cont+"'",
+            }
+        ],
+        model="llama3-8b-8192",
+    )
+
+    return chat_completion.choices[0].message.content
+DB_NAME = 'cache.db'
+
+def initialize_db():
+    with sqlite3.connect(DB_NAME) as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS cache (
+                article_id TEXT PRIMARY KEY,
+                content TEXT NOT NULL,
+                title TEXT NOT NULL
+            )
+        ''')
+        conn.commit()
+
+initialize_db()
 import re
+from googleapiclient.discovery import build
+from google.oauth2.service_account import Credentials
+
+# SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+
+# SERVICE_ACCOUNT_FILE = 'credentials.json'
+
+# SPREADSHEET_ID = '1fwIRN_OwAdZ59WU4_QsGNaSN7Yb4_ZxjnDhNRKx9wJ0'
+
+
+# def checkifdatacached(article_id):
+    
+#     credentials = Credentials.from_service_account_file(
+#         SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+#     service = build('sheets', 'v4', credentials=credentials)
+    
+    
+#     result = (
+#         service.spreadsheets()
+#         .values()
+#         .get(spreadsheetId=SPREADSHEET_ID, range='Sheet1!A:C').execute()
+        
+#     )
+#     rows = result.get("values", [])
+    
+    
+#     print(rows)
+#     # Iterate through rows and find the desired article_id
+#     for row in rows:
+#         if row[0] == article_id:
+#             if len(row) == 3:
+#                 return [row[1], row[2]]
+#             else:
+#                return "Row doesn't have enough columns."
+
+
+# def adddata(data):
+#     credentials = Credentials.from_service_account_file(
+#         SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+#     service = build('sheets', 'v4', credentials=credentials)
+#     sheet = service.spreadsheets()
+   
+    
+#     result = sheet.values().get(spreadsheetId=SPREADSHEET_ID, range='Sheet1!A:C', ).execute()
+#     values = result.get('values', [])
+
+#     first_empty_row = len(values) + 1
+
+#     append_range = f'Sheet1!A{first_empty_row}:C'
+#     body={
+#     "values": [
+#         data
+#     ]
+# }
+
+    # Append the data to the sheet
+    # response = sheet.values().append(
+    #     spreadsheetId=SPREADSHEET_ID,
+    #     range=append_range,
+    #     valueInputOption='USER_ENTERED',
+    #     body=body
+    # ).execute()
+
+    # print(f"Data added to range {response.get('tableRange')}.")
+    # print(f"Updated cells: {response.get('updates').get('updatedCells')}")
+
+
 
 app = Flask(__name__)
 
@@ -19,13 +124,11 @@ async def fetch_json(session, url):
 
 def contains_word_from_list(text, word_list):
     # Split the text into words using regular expressions to handle punctuation
-    words_in_text = re.findall(r'\b\w+\b', text.lower())  # Convert text to lowercase for case-insensitive matching
-    word_list = [word.lower() for word in word_list]  # Convert word list to lowercase
-
-    # Check if any word from word_list is present in words_in_text
+    words_in_text = re.findall(r'\b\w+\b', text.lower())  
+    word_list = [word.lower() for word in word_list]  
     for word in word_list:
         if word in words_in_text:
-            return True  # If any word is found, return True
+            return True  
     
     return False
 
@@ -62,40 +165,67 @@ async def scrape_article(session, article_url, title, img_url, time, publisher, 
         article_response = await fetch(session, f"https://onefootball.com/{article_url}")
         article_soup = BeautifulSoup(article_response, 'html.parser')
         article_id = article_url[-8:]
-        paragraph_divs = article_soup.find_all('div', class_='ArticleParagraph_articleParagraph__MrxYL')
-        textlist = extract_text_with_spacing(str(paragraph_divs))
+        cached_data = check_if_data_cached(article_id)
 
-        text_elements = textlist[0] if paragraph_divs else ""
-        attribution = textlist[1]
+        txt = None  # Initialize txt with None to check later
+        if cached_data:
+            txt = cached_data[0]  # Cached content
+        else:
+            # Extract paragraph content if not cached
+            paragraph_divs = article_soup.find_all('div', class_='ArticleParagraph_articleParagraph__MrxYL')
+            textlist = extract_text_with_spacing(str(paragraph_divs))
+            text_elements = textlist[0] if paragraph_divs else ""
+            attribution = textlist[1]
+            txt = unidecode(text_elements) if text_elements else None
+            
+            txt = response(txt)
+            txt = txt.replace('/n', '').replace('/', '')
+            txt = txt.replace('Here is the rephrased text:','')
+            txt = txt.replace("Here is the rephrased text with similar word count:",'')
+            txt = txt.replace('Here is the rephrased text with a similar word count:','')
 
-        womenswords = [
-            'WSL', "Women", "Women's", "Womens", "women", "woman", "wsl", "female", "ladies", "girls", "feminine",
-            "nwsl", "fa wsl", "female football", "mujer", "mujeres", "damas", "niñas", "femme", "calcio femminile",
-            "football féminin", "fußball frauen", "ladies league", "she", "her", "w-league", "division féminine","wcl","nwcl"
-            # Add more women's related terms here
-        ]
+            txt = txt.replace('\n','')
 
-        available = True
-        contains_word_in_text = contains_word_from_list(textlist[0], womenswords)
-        contains_word_in_img = contains_word_from_list(img_url, womenswords)
+            if txt:  # Cache the data only if text was successfully extracted
+                add_data(article_id, txt, title)
 
-        if womens is False:
-            if contains_word_in_text or contains_word_in_img:
-                available = False
+        if txt:
+            womenswords = [
+                'WSL', "Women", "Women's", "Womens", "women", "woman", "wsl", "female", "ladies", "girls", "feminine",
+                "nwsl", "fa wsl", "female football", "mujer", "mujeres", "damas", "niñas", "femme", "calcio femminile",
+                "football féminin", "fußball frauen", "ladies league", "she", "her", "w-league", "division féminine", "wcl", "nwcl"
+            ]
+            available = True
+            contains_word_in_text = contains_word_from_list(txt, womenswords)
+            contains_word_in_img = contains_word_from_list(img_url, womenswords)
 
-        if available:
-            return {
-                'title': title,
-                'article_content': unidecode(text_elements),
-                'img_url': img_url,
-                'article_url': article_url,
-                'article_id': article_id,
-                'time': time,
-                'publisher': publisher,
-                'attribution': attribution or '', 
-                'article_url':article_url
-            }
+            if womens is False:
+                if contains_word_in_text or contains_word_in_img:
+                    available = False
+
+            if available:
+                return {
+                    'title': title,
+                    'article_content': txt,
+                    'img_url': img_url,
+                    'article_id': article_id,
+                    'time': time,
+                }
+            
         return None
+
+def check_if_data_cached(article_id):
+    with sqlite3.connect(DB_NAME) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT content, title FROM cache WHERE article_id = ?", (article_id,))
+        row = cursor.fetchone()
+    return row  # Returns (content, title) if found, else None
+
+def add_data(article_id, content, title):
+    with sqlite3.connect(DB_NAME) as conn:
+        cursor = conn.cursor()
+        cursor.execute("INSERT OR REPLACE INTO cache (article_id, content, title) VALUES (?, ?, ?)", (article_id, content, title))
+        conn.commit()
 
 async def scrape_news_items(team, before_id, needbeforeid, womens):
     news_items = []
@@ -110,7 +240,8 @@ async def scrape_news_items(team, before_id, needbeforeid, womens):
         try:
             teasers += containers[5].get('fullWidth', {}).get('component', {}).get('gallery', {}).get('teasers', [])
         except:
-            pass                                
+            pass
+        
         tasks = []
         last_id = None
         for teaser in teasers:
