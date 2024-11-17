@@ -222,7 +222,7 @@ def check_if_data_cached(article_id):
     return row  # Returns (content, title) if found, else None
 
 def add_data(article_id, content, title):
-    with sqlite3.connect(os.getcwd()+'cache.db') as conn:
+    with sqlite3.connect(os.getcwd()+'/cache.db') as conn:
         cursor = conn.cursor()
         cursor.execute("INSERT OR REPLACE INTO cache (article_id, content, title) VALUES (?, ?, ?)", (article_id, content, title))
         conn.commit()
