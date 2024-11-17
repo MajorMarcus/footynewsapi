@@ -42,9 +42,7 @@ def initialize_db():
         conn.commit()
 
 initialize_db()
-import re
-from googleapiclient.discovery import build
-from google.oauth2.service_account import Credentials
+
 
 # SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
