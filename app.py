@@ -208,6 +208,7 @@ async def scrape_article(session, article_url, title, img_url, time, publisher, 
                     'title': title,
                     'article_content': txt,
                     'img_url': img_url,
+                    'article_url':article_url,
                     'article_id': article_id,
                     'time': time,
                 }
