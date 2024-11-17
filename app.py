@@ -215,14 +215,14 @@ async def scrape_article(session, article_url, title, img_url, time, publisher, 
         return None
 
 def check_if_data_cached(article_id):
-    with sqlite3.connect('footynewsapi/cache.db') as conn:
+    with sqlite3.connect(os.getcwd()+'/cache.db') as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT content, title FROM cache WHERE article_id = ?", (article_id,))
         row = cursor.fetchone()
     return row  # Returns (content, title) if found, else None
 
 def add_data(article_id, content, title):
-    with sqlite3.connect('footynewsapi/cache.db') as conn:
+    with sqlite3.connect(os.getcwd()+'cache.db') as conn:
         cursor = conn.cursor()
         cursor.execute("INSERT OR REPLACE INTO cache (article_id, content, title) VALUES (?, ?, ?)", (article_id, content, title))
         conn.commit()
