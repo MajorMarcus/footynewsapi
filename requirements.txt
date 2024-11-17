@@ -3,5 +3,6 @@ gunicorn
 bs4
 requests
 unidecode
+groq
 aiohttp
 regex
