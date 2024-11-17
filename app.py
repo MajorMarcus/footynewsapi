@@ -5,6 +5,7 @@ import asyncio
 import urllib.parse
 import sqlite3
 from unidecode import unidecode
+import re
 import os
 
 from groq import Groq
