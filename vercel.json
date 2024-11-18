@@ -6,5 +6,8 @@
   ],
   "routes": [
     {"src":"/(.*)", "dest":"app.py"}
-  ]
+  ],
+  "includeFiles": [
+    "cache.db"
+  ] 
 }
