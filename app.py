@@ -28,6 +28,20 @@ def response(cont):
     )
 
     return chat_completion.choices[0].message.content
+
+def responsetitle(cont):
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": """ rephrase this title of a football news article. make sure to not change the meaning of it. it must be only around 6-9 words. make it concise but completely understandable
+                """+"'"+cont+"'",
+            }
+        ],
+        model="llama3-8b-8192",
+    )
+
+    return chat_completion.choices[0].message.content
 DB_NAME = 'cache.db'
 
 def initialize_db():
@@ -201,10 +215,10 @@ async def scrape_article(session, article_url, title, img_url, time, publisher, 
             if womens is False:
                 if contains_word_in_text or contains_word_in_img:
                     available = False
-
+            title1 = response(title)
             if available:
                 return {
-                    'title': title,
+                    'title': title1,
                     'article_content': txt,
                     'img_url': img_url,
                     'article_url':article_url,
