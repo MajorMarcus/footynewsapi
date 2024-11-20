@@ -175,6 +175,7 @@ def extract_actual_url(url):
 
 async def scrape_article(session, article_url, title, img_url, time, publisher, womens):
     if article_url:
+        title1 = responsetitle(title)
         article_response = await fetch(session, f"https://onefootball.com/{article_url}")
         article_soup = BeautifulSoup(article_response, 'html.parser')
         article_id = article_url[-8:]
@@ -200,7 +201,7 @@ async def scrape_article(session, article_url, title, img_url, time, publisher, 
             txt = txt.replace('\n','')
 
             if txt:  # Cache the data only if text was successfully extracted
-                add_data(article_id, txt, title)
+                add_data(article_id, txt, title1)
 
         if txt:
             womenswords = [
@@ -215,7 +216,7 @@ async def scrape_article(session, article_url, title, img_url, time, publisher, 
             if womens is False:
                 if contains_word_in_text or contains_word_in_img:
                     available = False
-            title1 = response(title)
+           
             if available:
                 return {
                     'title': title1,
