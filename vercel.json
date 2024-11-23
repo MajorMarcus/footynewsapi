@@ -12,12 +12,4 @@
       "dest": "app.py"
     }
   ],
-  "functions": {
-    "app.py": {
-      "runtime": "python3.9"
-    }
-  },
-  "includeFiles": [
-    "cache.db"
-  ]
 }
