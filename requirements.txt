@@ -3,6 +3,7 @@ gunicorn
 bs4
 requests
 unidecode
+firebase_admin
 groq
 aiohttp
 regex
