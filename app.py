@@ -4,27 +4,14 @@ import aiohttp
 import asyncio
 import urllib.parse
 from unidecode import unidecode
-import firebase_admin
-from firebase_admin import firestore
-from firebase_admin import credentials
-import os
 import re
 from groq import Groq
 
-# Initialize Groq client
 client = Groq(
     api_key='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',
 )
 
-# Initialize Firestore
-cred = credentials.Certificate('futnews-864e6-c9579021ac88.json')
-firebase_admin.initialize_app(cred)
-db = firestore.client()
 
-# Flask app setup
-app = Flask(__name__)
-
-# Helper functions
 def responsetitle(cont):
     chat_completion = client.chat.completions.create(
         messages=[{
@@ -32,79 +19,28 @@ def responsetitle(cont):
             "content": f"Rephrase this football news article title to 6-9 words without changing the meaning: '{cont}'"
         }],
         model="llama3-8b-8192",
+        temperature=0,  # No randomness
+        top_p=0, 
+
     )
     return chat_completion.choices[0].message.content
+
 
 def response(cont):
     chat_completion = client.chat.completions.create(
         messages=[{
             "role": "user",
-            "content": f"Rephrase this football news article text without changing names, keywords, or player names. Ensure similar word count and please just respond with the response and not anything else breaking the 4th wall of seamlessness: '{cont}'"
+            "content": f"Rephrase this football news article text without changing names, keywords, or player names. Make it smaller and concise and please just respond with the response and not anything else breaking the 4th wall of seamlessness: '{cont}'"
         }],
         model="llama3-8b-8192",
+        temperature=0,  # No randomness
+        top_p=0, 
     )
     return chat_completion.choices[0].message.content
 
-def contains_word_from_list(text, word_list):
-    words_in_text = re.findall(r'\b\w+\b', text.lower())
-    word_list = [word.lower() for word in word_list]
-    return any(word in words_in_text for word in word_list)
+app = Flask(__name__)
 
-def extract_text_with_spacing(html_content):
-    soup = BeautifulSoup(html_content, 'html.parser')
-    pattern = r"\(Photo by [^)]+\)"
-    textelements = []
-    attribution = None
-    for p in soup.find_all('p'):
-        text = p.get_text()
-        text_without_attribution = re.sub(pattern, '', text).strip()
-        textelements.append(text_without_attribution)
 
-        match = re.search(pattern, text)
-        if match:
-            attribution = match.group()
-
-    return ' '.join(textelements), attribution
-
-def extract_actual_url(url):
-    key = "image="
-    start = url.find(key)
-    if start == -1 or any(domain in url for domain in ['betting', 'squawka', 'bit.ly', 'footballtoday.com']):
-        return None
-    return urllib.parse.unquote(url[start + len(key):]).replace('width=720', '')
-
-def check_if_data_cached(article_id):
-    doc = db.collection('cache').document(article_id).get()
-    return doc.to_dict() if doc.exists else None
-
-def add_data(article_id, content, title):
-    db.collection('cache').document(article_id).set({
-        'content': content,
-        'title': title
-    })
-
-def add_data_in_batches(data):
-    """Add multiple documents to Firestore using batched writes."""
-    batch = db.batch()  # Initialize a Firestore batch
-    batch_size = 500  # Firestore allows a maximum of 500 writes per batch
-    counter = 0
-
-    for article_id, content_data in data.items():
-        # Reference the Firestore document
-        doc_ref = db.collection('cache').document(article_id)
-        # Add the set operation to the batch
-        batch.set(doc_ref, content_data)
-        counter += 1
-
-        # Commit the batch if it reaches the batch size limit
-        if counter >= batch_size:
-            batch.commit()
-            batch = db.batch()  # Start a new batch
-            counter = 0
-
-    # Commit any remaining writes in the final batch
-    if counter > 0:
-        batch.commit()
 
 
 async def fetch(session, url):
@@ -114,52 +50,90 @@ async def fetch(session, url):
 async def fetch_json(session, url):
     async with session.get(url) as response:
         return await response.json()
+    
+
+def contains_word_from_list(text, word_list):
+    # Split the text into words using regular expressions to handle punctuation
+    words_in_text = re.findall(r'\b\w+\b', text.lower())  
+    word_list = [word.lower() for word in word_list]  
+    for word in word_list:
+        if word in words_in_text:
+            return True  
+    
+    return False
+
+def extract_text_with_spacing(html_content):
+    soup = BeautifulSoup(html_content, 'html.parser')
+    imageattributions = []
+    pattern = r"\(Photo by [^)]+\)"
+    textelements = []
+    attribution = False
+    for p in soup.find_all('p'):
+        text = p.get_text()
+        text_without_attribution = re.sub(pattern, '', text).strip()
+        textelements.append(text_without_attribution)
+        
+        match = re.search(pattern, text)
+        if match:
+            attribution = match.group()
+    
+    text = [' '.join(textelements), attribution]
+    return text
+
+def extract_actual_url(url):
+    key = "image="
+    start = url.find(key)
+    if start == -1:
+        return None
+    if 'betting' in url or 'squawka' in url or "bit.ly" in url or "footballtoday.com" in url:
+        return False 
+    else:
+        return urllib.parse.unquote(url[start + len(key):]).replace('width=720', '')
 
 async def scrape_article(session, article_url, title, img_url, time, publisher, womens):
-    article_id = article_url[-8:]
-    cached_data = check_if_data_cached(article_id)
+    if article_url:
+        article_response = await fetch(session, f"https://onefootball.com/{article_url}")
+        article_soup = BeautifulSoup(article_response, 'html.parser')
+        article_id = article_url[-8:]
+        article_url = article_url[9:]
+        paragraph_divs = article_soup.find_all('div', class_='ArticleParagraph_articleParagraph__MrxYL')
+        textlist = extract_text_with_spacing(str(paragraph_divs))
 
-    if cached_data:
-        return {
-            'title': cached_data['title'],
-            'article_content': cached_data['content'],
-            'img_url': img_url,
-            'article_url': article_url,
-            'article_id': article_id,
-            'time': time,
-        }
+        text_elements = textlist[0] if paragraph_divs else ""
+        attribution = textlist[1]
 
-    article_response = await fetch(session, f"https://onefootball.com/{article_url}")
-    article_soup = BeautifulSoup(article_response, 'html.parser')
+        womenswords = [
+            'WSL', "Women", "Women's", "Womens", "women", "woman", "wsl", "female", "ladies", "girls", "feminine",
+            "nwsl", "fa wsl", "female football", "mujer", "mujeres", "damas", "niñas", "femme", "calcio femminile",
+            "football féminin", "fußball frauen", "ladies league", "she", "her", "w-league", "division féminine","wcl","nwcl"
+            # Add more women's related terms here
+        ]
 
-    paragraph_divs = article_soup.find_all('div', class_='ArticleParagraph_articleParagraph__MrxYL')
-    text_elements, attribution = extract_text_with_spacing(str(paragraph_divs))
+        available = True
+        contains_word_in_text = contains_word_from_list(textlist[0], womenswords)
+        contains_word_in_img = contains_word_from_list(img_url, womenswords)
 
-    if not text_elements:
+        if womens is False:
+            if contains_word_in_text or contains_word_in_img:
+                available = False
+        txt = unidecode(text_elements)
+        print('a')
+        txt = response(txt)
+        print('b')
+        title1 = responsetitle(title)
+        if available:
+            return {
+                'title': title1,
+                'article_content': txt,
+                'img_url': img_url,
+                'article_url': article_url,
+                'article_id': article_id,
+                'time': time,
+                'publisher': publisher,
+                'attribution': attribution or '', 
+                'article_url':article_url
+            }
         return None
-
-    text_rephrased = response(unidecode(text_elements))
-    text_rephrased = re.sub(r'[\n/]', '', text_rephrased)
-
-    title_rephrased = responsetitle(title)
-    title_rephrased = title_rephrased.replace(r"\\",'')
-    add_data(article_id, text_rephrased, title_rephrased)
-
-    womenswords = [
-        'WSL', "Women", "Women's", "Womens", "women", "female", "ladies", "girls", "nwsl", "fa wsl", "female football",
-        "mujer", "damas", "femme", "calcio femminile", "football féminin", "fußball frauen", "she", "her", "w-league"
-    ]
-    if womens is False and (contains_word_from_list(text_rephrased, womenswords) or contains_word_from_list(img_url, womenswords)):
-        return None
-
-    return {
-        'title': title_rephrased,
-        'article_content': text_rephrased,
-        'img_url': img_url,
-        'article_url': article_url,
-        'article_id': article_id,
-        'time': time,
-    }
 
 async def scrape_news_items(team, before_id, needbeforeid, womens):
     news_items = []
@@ -170,44 +144,48 @@ async def scrape_news_items(team, before_id, needbeforeid, womens):
 
         response = await fetch_json(session, url)
         containers = response.get('containers', [])
-        teasers = containers[3].get('fullWidth', {}).get('component', {}).get('gallery', {}).get('teasers', []) if not before_id else response.get('teasers', [])
-        teasers += containers[5].get('fullWidth', {}).get('component', {}).get('gallery', {}).get('teasers', []) or []
-
+        teasers = response.get('teasers') if before_id else containers[3].get('fullWidth', {}).get('component', {}).get('gallery', {}).get('teasers', [])
+        try:
+            teasers += containers[5].get('fullWidth', {}).get('component', {}).get('gallery', {}).get('teasers', [])
+        except:
+            pass
+        
         tasks = []
+        last_id = None
         for teaser in teasers:
-            image = extract_actual_url(urllib.parse.unquote(teaser['imageObject']['path']))
+            image = extract_actual_url(urllib.parse.unquote(teaser['imageObject']['path']) if teaser['imageObject']['path'] else "")
+         
             if not image:
                 continue
-            image = image[:-12]
-            tasks.append(scrape_article(
-                session,
-                article_url=teaser['link'],
-                title=teaser['title'],
-                img_url=image,
-                time=teaser['publishTime'],
-                publisher=teaser['publisherName'],
-                womens=womens
-            ))
+            else:
+                image = image[:-12]
+                link = teaser['link']
+                title = teaser['title']
+                time = teaser['publishTime']
+                publisher = teaser['publisherName']
+                last_id = teaser['id']
 
+                tasks.append(scrape_article(session, article_url=link, title=title, img_url=image, time=time, publisher=publisher, womens=womens))
+                
         results = await asyncio.gather(*tasks)
         news_items.extend(filter(None, results))
 
-        last_id = teasers[-1]['id'] if teasers else None
-        return news_items, last_id
+    return news_items, last_id
 
-# Flask routes
 @app.route('/scrape', methods=['GET'])
 async def scrape():
     url = request.args.get('url')
-    womens = request.args.get('womens', 'False') == 'True'
+    womens = request.args.get('womens')
+    
+    womens = eval(womens)
     before_id = request.args.get('before_id')
-
     if not url:
         return jsonify({'error': 'URL is required'}), 400
-
+    print(url[32:-5])
     team = url[32:-5]
+
     needbeforeid = bool(before_id)
-    news_items, last_id = await scrape_news_items(team, before_id, needbeforeid, womens)
+    news_items, last_id = await scrape_news_items(team, before_id, needbeforeid=needbeforeid, womens=womens)
 
     return jsonify({
         'news_items': news_items,
