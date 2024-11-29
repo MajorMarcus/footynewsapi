@@ -2,6 +2,7 @@ flask[async]
 bs4
 requests
 unidecode
+httpx
 gunicorn
 firebase_admin
 groq
