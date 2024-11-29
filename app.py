@@ -12,45 +12,6 @@ client = Groq(
 )
 
 
-def responsetitle(cont):
-    chat_completion = client.chat.completions.create(
-        messages=[{
-            "role": "user",
-            "content": f"Rephrase this football news article title to 6-9 words without changing the meaning: '{cont}'"
-        }],
-        model="llama3-8b-8192",
-        temperature=0,  # No randomness
-        top_p=0, 
-
-    )
-    return chat_completion.choices[0].message.content
-
-
-def response(cont):
-    chat_completion = client.chat.completions.create(
-        messages=[{
-            "role": "user",
-            "content": f"Rephrase this football news article text without changing names, keywords, or player names. Make it smaller and concise and please just respond with the response and not anything else breaking the 4th wall of seamlessness: '{cont}'"
-        }],
-        model="llama3-8b-8192",
-        temperature=0,  # No randomness
-        top_p=0, 
-    )
-    return chat_completion.choices[0].message.content
-
-app = Flask(__name__)
-
-
-
-
-async def fetch(session, url):
-    async with session.get(url) as response:
-        return await response.text()
-
-async def fetch_json(session, url):
-    async with session.get(url) as response:
-        return await response.json()
-    
 
 def contains_word_from_list(text, word_list):
     # Split the text into words using regular expressions to handle punctuation
@@ -90,48 +51,96 @@ def extract_actual_url(url):
     else:
         return urllib.parse.unquote(url[start + len(key):]).replace('width=720', '')
 
+
+
+def batch_rephrase_titles(titles):
+    if not titles:
+        return []
+    titles_prompt = "\n".join([f"{i+1}. {title}" for i, title in enumerate(titles)])
+    prompt = f"Rephrase the following football news article titles to 6-9 words each without changing their meaning:\n{titles_prompt}"
+    chat_completion = client.chat.completions.create(
+        messages=[{"role": "user", "content": prompt}],
+        model="llama3-8b-8192",
+        temperature=0,
+        top_p=0,
+    )
+    rephrased_titles = chat_completion.choices[0].message.content.split("\n")
+    return [title.split(". ", 1)[-1] for title in rephrased_titles if ". " in title]
+def batch_rephrase_content(contents, batch_size=5):
+    """
+    Rephrase article contents in batches to avoid character limitations.
+
+    :param contents: List of article contents to rephrase.
+    :param batch_size: Number of contents per batch.
+    :return: List of rephrased article contents.
+    """
+    if not contents:
+        return []
+    
+    rephrased_contents = []
+    for i in range(0, len(contents), batch_size):
+        batch = contents[i:i + batch_size]
+        batch_prompt = "\n".join([f"{j+1}. {content}" for j, content in enumerate(batch)])
+        prompt = (
+            "Rephrase each of  the following football news articles' content into detailed summaries "
+            "of 4-5 lines each. do not try to make it concise and give every detail but rephrase it to avoid recessive words and make it to the point while also providing an exact interpretation of what the article wanted to show, without changing names, keywords, or player names:\n"
+            f"{batch_prompt}"
+        )
+        
+        try:
+            chat_completion = client.chat.completions.create(
+                messages=[{"role": "user", "content": prompt}],
+                model="llama3-8b-8192",
+                temperature=0,
+                top_p=0,
+            )
+            batch_rephrased = chat_completion.choices[0].message.content.split("\n")
+            batch_rephrased = [
+                content.split(". ", 1)[-1]
+                for content in batch_rephrased
+                if ". " in content
+            ]
+            rephrased_contents.extend(batch_rephrased)
+        except Exception as e:
+            print(f"Error during rephrasing: {e}")
+            rephrased_contents.extend(batch)  # Fallback to original content if rephrasing fails.
+
+    return rephrased_contents
+
+app = Flask(__name__)
+
+async def fetch(session, url):
+    async with session.get(url) as response:
+        return await response.text()
+
+async def fetch_json(session, url):
+    async with session.get(url) as response:
+        return await response.json()
+
 async def scrape_article(session, article_url, title, img_url, time, publisher, womens):
     if article_url:
         article_response = await fetch(session, f"https://onefootball.com/{article_url}")
         article_soup = BeautifulSoup(article_response, 'html.parser')
-        article_id = article_url[-8:]
-        article_url = article_url[9:]
         paragraph_divs = article_soup.find_all('div', class_='ArticleParagraph_articleParagraph__MrxYL')
         textlist = extract_text_with_spacing(str(paragraph_divs))
-
         text_elements = textlist[0] if paragraph_divs else ""
         attribution = textlist[1]
-
+        
         womenswords = [
-            'WSL', "Women", "Women's", "Womens", "women", "woman", "wsl", "female", "ladies", "girls", "feminine",
-            "nwsl", "fa wsl", "female football", "mujer", "mujeres", "damas", "niñas", "femme", "calcio femminile",
-            "football féminin", "fußball frauen", "ladies league", "she", "her", "w-league", "division féminine","wcl","nwcl"
-            # Add more women's related terms here
+            'WSL', "Women", "Women's", "female", "ladies", "girls", "nwsl", "fa wsl"
         ]
-
-        available = True
-        contains_word_in_text = contains_word_from_list(textlist[0], womenswords)
-        contains_word_in_img = contains_word_from_list(img_url, womenswords)
-
-        if womens is False:
-            if contains_word_in_text or contains_word_in_img:
-                available = False
-        txt = unidecode(text_elements)
-        print('a')
-        txt = response(txt)
-        print('b')
-        title1 = responsetitle(title)
+        available = not (womens is False and (
+            contains_word_from_list(textlist[0], womenswords) or contains_word_from_list(img_url, womenswords)
+        ))
         if available:
             return {
-                'title': title1,
-                'article_content': txt,
+                'title': title,
+                'article_content': text_elements,
                 'img_url': img_url,
                 'article_url': article_url,
-                'article_id': article_id,
                 'time': time,
                 'publisher': publisher,
-                'attribution': attribution or '', 
-                'article_url':article_url
+                'attribution': attribution or '',
             }
         return None
 
@@ -141,7 +150,6 @@ async def scrape_news_items(team, before_id, needbeforeid, womens):
         url = f'https://api.onefootball.com/web-experience/en/team/{team}/news'
         if needbeforeid:
             url += f'?before_id={before_id}'
-
         response = await fetch_json(session, url)
         containers = response.get('containers', [])
         teasers = response.get('teasers') if before_id else containers[3].get('fullWidth', {}).get('component', {}).get('gallery', {}).get('teasers', [])
@@ -149,48 +157,48 @@ async def scrape_news_items(team, before_id, needbeforeid, womens):
             teasers += containers[5].get('fullWidth', {}).get('component', {}).get('gallery', {}).get('teasers', [])
         except:
             pass
-        
+
         tasks = []
-        last_id = None
+        titles = []
+        contents = []
         for teaser in teasers:
             image = extract_actual_url(urllib.parse.unquote(teaser['imageObject']['path']) if teaser['imageObject']['path'] else "")
-         
+            
             if not image:
                 continue
-            else:
-                image = image[:-12]
-                link = teaser['link']
-                title = teaser['title']
-                time = teaser['publishTime']
-                publisher = teaser['publisherName']
-                last_id = teaser['id']
+            image = image.replace('&q=25&w=1080','')
+            link = teaser['link']
+            title = teaser['title']
+            time = teaser['publishTime']
+            publisher = teaser['publisherName']
+            titles.append(title)
+            tasks.append(scrape_article(session, link, title, image, time, publisher, womens))
 
-                tasks.append(scrape_article(session, article_url=link, title=title, img_url=image, time=time, publisher=publisher, womens=womens))
-                
-        results = await asyncio.gather(*tasks)
-        news_items.extend(filter(None, results))
+        articles = await asyncio.gather(*tasks)
+        articles = [article for article in articles if article]
+        
+        # Batch rephrase titles and content
+        rephrased_titles = batch_rephrase_titles([article['title'] for article in articles])
+        rephrased_contents = batch_rephrase_content([article['article_content'] for article in articles])
+        for i, article in enumerate(articles):
+            article['title'] = rephrased_titles[i]
+            article['article_content'] = rephrased_contents[i]
 
-    return news_items, last_id
+        news_items.extend(articles)
+
+    return news_items, teasers[-1]['id'] if teasers else None
 
 @app.route('/scrape', methods=['GET'])
 async def scrape():
     url = request.args.get('url')
-    womens = request.args.get('womens')
-    
-    womens = eval(womens)
+    womens = eval(request.args.get('womens', 'False'))
     before_id = request.args.get('before_id')
     if not url:
         return jsonify({'error': 'URL is required'}), 400
-    print(url[32:-5])
     team = url[32:-5]
-
     needbeforeid = bool(before_id)
-    news_items, last_id = await scrape_news_items(team, before_id, needbeforeid=needbeforeid, womens=womens)
-
-    return jsonify({
-        'news_items': news_items,
-        'last_id': last_id
-    })
+    news_items, last_id = await scrape_news_items(team, before_id, needbeforeid, womens)
+    return jsonify({'news_items': news_items, 'last_id': last_id})
 
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=False)
