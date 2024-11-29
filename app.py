@@ -3,13 +3,25 @@ from bs4 import BeautifulSoup
 import aiohttp
 import asyncio
 import urllib.parse
+import httpx
 from unidecode import unidecode
 import re
 from groq import Groq
+proxies = {
+    "http://": "https://groqcall.ai/proxy/groq/v1",
+}
 
-client = Groq(api_key='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')
+# Custom client to handle proxy
+class ProxyHttpxClient(httpx.Client):
+    def __init__(self, proxies=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if proxies:
+            self.proxies = proxies
 
-
+client = Groq(
+    api_key='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',
+    http_client= ProxyHttpxClient(proxies=proxies)
+)
 
 def contains_word_from_list(text, word_list):
     # Split the text into words using regular expressions to handle punctuation
