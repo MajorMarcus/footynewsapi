@@ -7,9 +7,7 @@ from unidecode import unidecode
 import re
 from groq import Groq
 
-client = Groq(
-    api_key='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',
-)
+client = Groq(api_key='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')
 
 
 
