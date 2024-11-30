@@ -63,19 +63,34 @@ def extract_actual_url(url):
 
 
 
-def batch_rephrase_titles(titles):
+def batch_rephrase_titles(titles, batch_size=10):
     if not titles:
         return []
     titles_prompt = "\n".join([f"{i+1}. {title}" for i, title in enumerate(titles)])
     prompt = f"Rephrase the following football news article titles to 6-9 words each without changing their meaning:\n{titles_prompt}"
-    chat_completion = client.chat.completions.create(
-        messages=[{"role": "user", "content": prompt}],
-        model="llama3-8b-8192",
-        temperature=0,
-        top_p=0,
+    
+    for i in range(0, len(contents), batch_size):
+        batch = contents[i:i + batch_size]
+        batch_prompt = "\n".join([f"{j+1}. {content}" for j, content in enumerate(batch)])
+        
+        
+        try:
+            chat_completion = client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="llama3-8b-8192",
+            temperature=0,
+            top_p=0,
     )
+            batch_rephrased = chat_completion.choices[0].message.content.split("\n")
+            batch_rephrased = [
+                content.split(". ", 1)[-1]
+                for content in batch_rephrased
+                if ". " in content
+            ]
+            rephrased_titles.extend(batch_rephrased)
     rephrased_titles = chat_completion.choices[0].message.content.split("\n")
-    return [title.split(". ", 1)[-1] for title in rephrased_titles if ". " in title]
+    return rephrased_titles
+    
 def batch_rephrase_content(contents, batch_size=3):
     """
     Rephrase article contents in batches to avoid character limitations.
