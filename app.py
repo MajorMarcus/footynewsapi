@@ -90,7 +90,7 @@ def batch_rephrase_titles(titles, batch_size=10):
         rephrased_titles.extend(batch_rephrased)
     return rephrased_titles
     
-def batch_rephrase_content(contents, batch_size=3):
+def batch_rephrase_content(contents, batch_size=4):
     """
     Rephrase article contents in batches to avoid character limitations.
 
