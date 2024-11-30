@@ -74,20 +74,20 @@ def batch_rephrase_titles(titles, batch_size=10):
         batch_prompt = "\n".join([f"{j+1}. {content}" for j, content in enumerate(batch)])
         
         
-        try:
-            chat_completion = client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
-            model="llama3-8b-8192",
-            temperature=0,
-            top_p=0,
-    )
-            batch_rephrased = chat_completion.choices[0].message.content.split("\n")
-            batch_rephrased = [
-                content.split(". ", 1)[-1]
-                for content in batch_rephrased
-                if ". " in content
-            ]
-            rephrased_titles.extend(batch_rephrased)
+        
+        chat_completion = client.chat.completions.create(
+        messages=[{"role": "user", "content": prompt}],
+        model="llama3-8b-8192",
+        temperature=0,
+        top_p=0,
+        )
+        batch_rephrased = chat_completion.choices[0].message.content.split("\n")
+        batch_rephrased = [
+            content.split(". ", 1)[-1]
+            for content in batch_rephrased
+            if ". " in content
+        ]
+        rephrased_titles.extend(batch_rephrased)
     return rephrased_titles
     
 def batch_rephrase_content(contents, batch_size=3):
