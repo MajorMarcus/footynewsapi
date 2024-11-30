@@ -88,7 +88,6 @@ def batch_rephrase_titles(titles, batch_size=10):
                 if ". " in content
             ]
             rephrased_titles.extend(batch_rephrased)
-    rephrased_titles = chat_completion.choices[0].message.content.split("\n")
     return rephrased_titles
     
 def batch_rephrase_content(contents, batch_size=3):
