@@ -76,7 +76,7 @@ def batch_rephrase_titles(titles):
     )
     rephrased_titles = chat_completion.choices[0].message.content.split("\n")
     return [title.split(". ", 1)[-1] for title in rephrased_titles if ". " in title]
-def batch_rephrase_content(contents, batch_size=5):
+def batch_rephrase_content(contents, batch_size=3):
     """
     Rephrase article contents in batches to avoid character limitations.
 
