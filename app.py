@@ -82,6 +82,7 @@ def batch_rephrase_titles(titles, batch_size=10):
         top_p=0,
         )
         batch_rephrased = chat_completion.choices[0].message.content.split("\n")
+        
         batch_rephrased = [
             content.split(". ", 1)[-1]
             for content in batch_rephrased
@@ -107,7 +108,7 @@ def batch_rephrase_content(contents, batch_size=4):
         batch_prompt = "\n".join([f"{j+1}. {content}" for j, content in enumerate(batch)])
         prompt = (
             "Rephrase each of  the following football news articles' content into detailed summaries "
-            " do not try to make it concise and give every detail but rephrase it to avoid recessive words and make it to the point while also providing an exact interpretation of what the article wanted to show, without changing names, keywords, or player names:\n"
+            " do not try to make it concise and give every detail but rephrase it to avoid recessive words and make it to the point while also providing an exact interpretation of what the article wanted to show, without changing names, keywords, or player names and only reply with the artice content and nothing else to not break the 4th wall for seamlessness:\n"
             f"{batch_prompt}"
         )
         
@@ -119,12 +120,21 @@ def batch_rephrase_content(contents, batch_size=4):
                 top_p=0,
             )
             batch_rephrased = chat_completion.choices[0].message.content.split("\n")
-            batch_rephrased = [
-                content.split(". ", 1)[-1]
-                for content in batch_rephrased
-                if ". " in content
-            ]
-            rephrased_contents.extend(batch_rephrased)
+            batch_rephrased =[x for x in batch_rephrased if x]
+            a = []
+            for x in batch_rephrased:
+
+                if 'Article' in x or 'Articles' in x or 'articles' in x:
+                    pass
+                else:
+                    a.append(x)
+
+            # batch_rephrased = [
+            #     content.split(". ", 1)[-1]
+            #     for content in batch_rephrased
+            #     if ". " in content
+            # ]
+            rephrased_contents.extend(a)
         except Exception as e:
             print(f"Error during rephrasing: {e}")
             rephrased_contents.extend(batch)  # Fallback to original content if rephrasing fails.
@@ -205,6 +215,7 @@ async def scrape_news_items(team, before_id, needbeforeid, womens):
         # Batch rephrase titles and content
         rephrased_titles = batch_rephrase_titles([article['title'] for article in articles])
         rephrased_contents = batch_rephrase_content([article['article_content'] for article in articles])
+        print(len(rephrased_contents))
         for i, article in enumerate(articles):
             article['title'] = rephrased_titles[i]
             article['article_content'] = rephrased_contents[i]
