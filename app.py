@@ -68,9 +68,9 @@ def batch_rephrase_titles(titles, batch_size=10):
         return []
     titles_prompt = "\n".join([f"{i+1}. {title}" for i, title in enumerate(titles)])
     prompt = f"Rephrase the following football news article titles to 6-9 words each without changing their meaning:\n{titles_prompt}"
-    
-    for i in range(0, len(contents), batch_size):
-        batch = contents[i:i + batch_size]
+    rephrased_titles = []
+    for i in range(0, len(titles), batch_size):
+        batch = titles[i:i + batch_size]
         batch_prompt = "\n".join([f"{j+1}. {content}" for j, content in enumerate(batch)])
         
         
@@ -107,7 +107,7 @@ def batch_rephrase_content(contents, batch_size=4):
         batch_prompt = "\n".join([f"{j+1}. {content}" for j, content in enumerate(batch)])
         prompt = (
             "Rephrase each of  the following football news articles' content into detailed summaries "
-            "of 4-5 lines each. do not try to make it concise and give every detail but rephrase it to avoid recessive words and make it to the point while also providing an exact interpretation of what the article wanted to show, without changing names, keywords, or player names:\n"
+            " do not try to make it concise and give every detail but rephrase it to avoid recessive words and make it to the point while also providing an exact interpretation of what the article wanted to show, without changing names, keywords, or player names:\n"
             f"{batch_prompt}"
         )
         
@@ -162,7 +162,7 @@ async def scrape_article(session, article_url, title, img_url, time, publisher, 
                 'article_content': text_elements,
                 'img_url': img_url,
                 'article_url': article_url,
-                'article_id':article_url[:-8],
+                'article_id':article_url[:8],
                 'time': time,
                 'publisher': publisher,
                 'attribution': attribution or '',
