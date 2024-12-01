@@ -19,9 +19,31 @@ class ProxyHttpxClient(httpx.Client):
             self.proxies = proxies
 
 client = Groq(
+    api_key='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',
+    http_client= ProxyHttpxClient(proxies=proxies)
+)
+
+client2 = Groq(
     api_key='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',
     http_client= ProxyHttpxClient(proxies=proxies)
 )
+
+client3 = Groq(
+    api_key='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',
+    http_client= ProxyHttpxClient(proxies=proxies)
+)
+
+client4 = Groq(
+    api_key='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',
+    http_client= ProxyHttpxClient(proxies=proxies)
+)
+
+client5 = Groq(
+    api_key='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', 
+    http_client=ProxyHttpxClient(proxies=proxies)
+)
+
+
 
 def contains_word_from_list(text, word_list):
     # Split the text into words using regular expressions to handle punctuation
@@ -90,10 +112,9 @@ def batch_rephrase_titles(titles, batch_size=10):
         ]
         rephrased_titles.extend(batch_rephrased)
     return rephrased_titles
-    
-def batch_rephrase_content(contents, batch_size=4):
+def batch_rephrase_content(contents, batch_size=2):
     """
-    Rephrase article contents in batches to avoid character limitations.
+    Rephrase article contents in batches, using a round-robin approach with multiple clients.
 
     :param contents: List of article contents to rephrase.
     :param batch_size: Number of contents per batch.
@@ -101,45 +122,41 @@ def batch_rephrase_content(contents, batch_size=4):
     """
     if not contents:
         return []
-    
+
+    clients = [client2, client3, client4, client5]
+    client_count = len(clients)
     rephrased_contents = []
+
     for i in range(0, len(contents), batch_size):
         batch = contents[i:i + batch_size]
-        batch_prompt = "\n".join([f"{j+1}. {content}" for j, content in enumerate(batch)])
-        prompt = (
-            "Rephrase each of  the following football news articles' content into detailed summaries "
-            " do not try to make it concise and give every detail but rephrase it to avoid recessive words and make it to the point while also providing an exact interpretation of what the article wanted to show, without changing names, keywords, or player names and only reply with the artice content and nothing else to not break the 4th wall for seamlessness:\n"
-            f"{batch_prompt}"
-        )
-        
-        try:
-            chat_completion = client.chat.completions.create(
-                messages=[{"role": "user", "content": prompt}],
-                model="llama3-8b-8192",
-                temperature=0,
-                top_p=0,
+        batch_rephrased = []
+
+        # Divide the batch among clients, two articles per client
+        for j, content in enumerate(batch):
+            assigned_client = clients[(j // 2) % client_count]  # Use 2 articles per client
+            prompt = (
+                 "Rephrase each of  the following football news articles' content into detailed summaries "
+            " do try to make it concise and give every detail but rephrase it to avoid recessive words and make it to the point while also providing an exact interpretation of what the article wanted to show, without changing names, keywords, or player names and only reply with the article content and nothing else to not break the 4th wall for seamlessness and dont give an intro saying heres the blah blah bla go right into the article txt:\n"
+                f"{content}"
             )
-            batch_rephrased = chat_completion.choices[0].message.content.split("\n")
-            batch_rephrased =[x for x in batch_rephrased if x]
-            a = []
-            for x in batch_rephrased:
+            try:
+                chat_completion = assigned_client.chat.completions.create(
+                    messages=[{"role": "user", "content": prompt}],
+                    model="llama3-8b-8192",
+                    temperature=0,
+                    top_p=0,
+                )
+                rephrased_text = chat_completion.choices[0].message.content.strip()
+                rephrased_text = rephrased_text.replace('/n','')
+                batch_rephrased.append(rephrased_text)
+            except Exception as e:
+                print(f"Error with client {assigned_client}: {e}")
+                batch_rephrased.append(content)  # Fallback to original content
 
-                if 'Article' in x or 'Articles' in x or 'articles' in x:
-                    pass
-                else:
-                    a.append(x)
-
-            # batch_rephrased = [
-            #     content.split(". ", 1)[-1]
-            #     for content in batch_rephrased
-            #     if ". " in content
-            # ]
-            rephrased_contents.extend(a)
-        except Exception as e:
-            print(f"Error during rephrasing: {e}")
-            rephrased_contents.extend(batch)  # Fallback to original content if rephrasing fails.
+        rephrased_contents.extend(batch_rephrased)
 
     return rephrased_contents
+
 
 app = Flask(__name__)
 
