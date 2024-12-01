@@ -19,7 +19,7 @@ class ProxyHttpxClient(httpx.Client):
             self.proxies = proxies
 
 client = Groq(
-    api_key='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',
+    api_key='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',
     http_client= ProxyHttpxClient(proxies=proxies)
 )
 
