@@ -6,9 +6,11 @@ import urllib.parse
 import httpx
 from unidecode import unidecode
 import re
+from deep_translator import GoogleTranslator
 from groq import Groq
 from functools import lru_cache
-from aiohttp import TCPConnector, ClientTimeout
+from translate import Translator
+from aiohttp import ClientSession, TCPConnector, ClientTimeout
 
 # Constants and Patterns
 WOMENS_WORDS = frozenset([
@@ -37,7 +39,6 @@ clients = [
         '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',
         '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',
         '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',
-        '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'
     ]
 ]
 
@@ -71,14 +72,15 @@ def extract_actual_url(url):
         return None
     key = "image="
     start = url.find(key)
+    
     return urllib.parse.unquote(url[start + len(key):]).replace('width=720', '') if start != -1 else None
 
-async def batch_rephrase_titles(titles, batch_size=10):
+async def batch_rephrase_titles(titles,lang, batch_size=10,):
     if not titles:
         return []
     
     titles_prompt = "\n".join([f"{i+1}. {title}" for i, title in enumerate(titles)])
-    prompt = f"Rephrase these football news article titles to 6-9 words each without changing meaning:\n{titles_prompt}"
+    prompt = f"Rephrase these football news article titles to 6-9 words each without changing meaning and change it to the language {lang}:\n{titles_prompt}"
     
     results = []
     for i in range(0, len(titles), batch_size):
@@ -103,23 +105,22 @@ async def batch_rephrase_titles(titles, batch_size=10):
             results.extend(batch)  # Fallback to original titles
             
     return results
-
-async def batch_rephrase_content(contents):
+async def batch_rephrase_content(contents, lang):
     if not contents:
         return []
 
-    batch_size = 2
+    batch_size = 4
     results = []
-    
-    async def process_batch(client, batch):
+    async def process_batch(client, batch, lang):
         if not batch:
             return []
         prompt = (
-            "Rephrase these football news articles into detailed summaries. Make them concise while keeping all details. "
-            "only respond with the article content and dont give any intro for seamlessness to not break the 4th wall"
-            "Avoid repetitive words and make it direct while maintaining the original meaning. Keep all names and keywords unchanged:\n" +
-
-            "\n".join(f"{i+1}. {content}" for i, content in enumerate(batch))
+            f"Rephrase these football news articles into detailed summaries. "
+            f"DONT GIVE AN INTRO OR CONTEXT TO WHAT UR RESPONSE IS JUST AND JUST RESPOND WITH THE ARTICLE CONTENTS FOR SEAMLESSNESS"
+            F"DONT GIVE ANY NUMERIC INDICATION OF THE ARTICLES JUST SEPARATE THEM WITH '|||' "
+            f"Each summary should be concise and complete while retaining all essential details. AND EASY FOR THE READER TO READ IN UNDER 1 OR 2 MINUTES "
+            f"Use '|||' as a separator between articles. Write in {lang}:\n\n" +
+            "\n\n".join([f"Article {i+1}:\n{content}" for i, content in enumerate(batch)])
         )
         try:
             completion = client.chat.completions.create(
@@ -128,10 +129,8 @@ async def batch_rephrase_content(contents):
                 temperature=0,
                 top_p=0,
             )
-            return [
-                content for content in completion.choices[0].message.content.split("\n")
-                if content and not any(word in content.lower() for word in ['article:', 'summary:','article','Article','summaries', '*'])
-            ]
+            articles = completion.choices[0].message.content.split("|||")
+            return [article.strip() for article in articles if article.strip()]
         except Exception as e:
             print(f"Error in content rephrasing: {e}")
             return batch
@@ -142,17 +141,16 @@ async def batch_rephrase_content(contents):
             start_idx = i + j * batch_size
             batch = contents[start_idx:start_idx + batch_size]
             if batch:
-                tasks.append(process_batch(client, batch))
+                tasks.append(process_batch(client, batch, lang))
         
         batch_results = await asyncio.gather(*tasks)
         for batch_result in batch_results:
-            if 'article' in batch_result:
-                print(batch_result)
-                continue
-            else:
+            if batch_result:
                 results.extend(batch_result)
-    
+
     return results
+
+
 
 async def fetch(session, url):
     async with session.get(url, timeout=10) as response:
@@ -177,13 +175,13 @@ async def scrape_article(session, article_url, title, img_url, time, publisher, 
         
         if not text_elements or (womens is False and (contains_word_from_list(text_elements) or contains_word_from_list(img_url))):
             return None
-
+        img_url = img_url.replace('&q=25&w=1080','')
         return {
             'title': title,
             'article_content': text_elements,
             'img_url': img_url,
             'article_url': article_url,
-            'article_id': article_url[:-8],
+            'article_id': article_url[-8:],
             'time': time,
             'publisher': publisher,
             'attribution': attribution or '',
@@ -192,11 +190,11 @@ async def scrape_article(session, article_url, title, img_url, time, publisher, 
         print(f"Error scraping article: {e}")
         return None
 
-async def scrape_news_items(team, before_id, needbeforeid, womens):
+async def scrape_news_items(team, before_id, needbeforeid, womens, lang):
     connector = TCPConnector(limit=100, force_close=True)
     timeout = ClientTimeout(total=30)
     
-    async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
+    async with ClientSession(connector=connector, timeout=timeout) as session:
         url = f'https://api.onefootball.com/web-experience/en/team/{team}/news'
         if needbeforeid:
             url += f'?before_id={before_id}'
@@ -206,45 +204,26 @@ async def scrape_news_items(team, before_id, needbeforeid, womens):
             return [], None
 
         containers = response.get('containers', [])
-        teasers = []
-        
-        if before_id:
-            teasers.extend(response.get('teasers', []))
-        else:
-            if len(containers) > 3:
-                teasers.extend(containers[3].get('fullWidth', {}).get('component', {}).get('gallery', {}).get('teasers', []))
-            if len(containers) > 5:
-                teasers.extend(containers[5].get('fullWidth', {}).get('component', {}).get('gallery', {}).get('teasers', []))
-
-        if not teasers:
-            return [], None
+        teasers = response.get('teasers', []) if before_id else [
+            *containers[3].get('fullWidth', {}).get('component', {}).get('gallery', {}).get('teasers', []),
+            *containers[5].get('fullWidth', {}).get('component', {}).get('gallery', {}).get('teasers', [])
+        ]
 
         scrape_tasks = []
-        titles = []
         for teaser in teasers:
             image_path = teaser.get('imageObject', {}).get('path', '')
-            if not image_path:
-                continue
-                
             image = extract_actual_url(urllib.parse.unquote(image_path))
-            if not image:
-                continue
-                
-            image = image.replace('&q=25&w=1080', '')
-            titles.append(teaser['title'])
-            scrape_tasks.append(
-                scrape_article(
-                    session, teaser['link'], teaser['title'], 
-                    image, teaser['publishTime'], 
-                    teaser['publisherName'], womens
+            if image:
+                scrape_tasks.append(
+                    scrape_article(
+                        session, teaser['link'], teaser['title'], 
+                        image, teaser['publishTime'], teaser['publisherName'], womens
+                    )
                 )
-            )
 
         articles = [a for a in await asyncio.gather(*scrape_tasks) if a]
-        
-        # Parallel processing of titles and contents
-        title_task = batch_rephrase_titles([a['title'] for a in articles])
-        content_task = batch_rephrase_content([a['article_content'] for a in articles])
+        title_task = batch_rephrase_titles([a['title'] for a in articles], lang=lang)
+        content_task = batch_rephrase_content([a['article_content'] for a in articles],lang=lang)
         
         rephrased_titles, rephrased_contents = await asyncio.gather(title_task, content_task)
         
@@ -257,14 +236,16 @@ async def scrape_news_items(team, before_id, needbeforeid, womens):
 @app.route('/scrape', methods=['GET'])
 async def scrape():
     url = request.args.get('url')
+
     if not url:
         return jsonify({'error': 'URL is required'}), 400
         
     womens = request.args.get('womens', 'False').lower() == 'true'
+    lang = request.args.get('lang', 'en')
     before_id = request.args.get('before_id')
     team = url[32:-5]
     
-    news_items, last_id = await scrape_news_items(team, before_id, bool(before_id), womens)
+    news_items, last_id = await scrape_news_items(team, before_id, bool(before_id), womens, lang)
     return jsonify({'news_items': news_items, 'last_id': last_id})
 
 if __name__ == '__main__':
