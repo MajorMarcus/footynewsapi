@@ -117,7 +117,8 @@ async def batch_rephrase_content(contents, lang):
             f"DONT GIVE AN INTRO OR CONTEXT TO WHAT UR RESPONSE IS JUST AND JUST RESPOND WITH THE ARTICLE CONTENTS FOR SEAMLESSNESS"
             F"DONT GIVE ANY NUMERIC INDICATION OF THE ARTICLES JUST SEPARATE THEM WITH '|||' "
             f"Each summary should be concise and complete while retaining all essential details. AND EASY FOR THE READER TO READ IN UNDER 1 OR 2 MINUTES "
-            f"Use '|||' as a separator between articles. Write in {lang}:\n\n" +
+            f"MANDATORILY THE ARTICLE CONTENT SHOULD ONLY BE IN LANGUAGE {lang}. if it is not of the english script, use unicodes"
+            f"Use '|||' as a separator between articles.\n" +
             "\n\n".join([f"Article {i+1}:\n{content}" for i, content in enumerate(batch)])
         )
         try:
