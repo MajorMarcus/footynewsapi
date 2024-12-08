@@ -6,10 +6,8 @@ import urllib.parse
 import httpx
 from unidecode import unidecode
 import re
-from deep_translator import GoogleTranslator
 from groq import Groq
 from functools import lru_cache
-from translate import Translator
 from aiohttp import ClientSession, TCPConnector, ClientTimeout
 
 # Constants and Patterns
