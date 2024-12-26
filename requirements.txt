@@ -2,7 +2,6 @@ flask[async]
 bs4
 requests
 unidecode
-async_lru
 httpx
 gunicorn
 firebase_admin
