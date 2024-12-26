@@ -248,4 +248,3 @@ async def scrape():
 
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=False)
-  make this code run as fast a sgoddamn possible without removing functionality
