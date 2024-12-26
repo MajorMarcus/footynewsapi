@@ -50,7 +50,7 @@ def contains_word_from_list(text):
     return bool(words_in_text & WOMENS_WORDS)
 
 def extract_text_with_spacing(html_content):
-    soup = BeautifulSoup(html_content, 'html.parser', parse_only=SoupStrainer('p'))
+    soup = BeautifulSoup(html_content, 'html.parser')
     texts = []
     attribution = None
     
