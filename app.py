@@ -5,6 +5,8 @@ import asyncio
 import urllib.parse
 import httpx
 from unidecode import unidecode
+
+from async_lru import alru_cache
 import re
 from groq import Groq
 from functools import lru_cache
@@ -153,7 +155,8 @@ async def batch_rephrase_content(contents, lang):
 async def fetch(session, url):
     async with session.get(url, timeout=10) as response:
         return await response.text() if response.status == 200 else None
-
+        
+@alru_cache(maxsize=500)
 async def fetch_json(session, url):
     async with session.get(url, timeout=10) as response:
         return await response.json() if response.status == 200 else None
@@ -164,11 +167,8 @@ async def scrape_article(session, article_url, title, img_url, time, publisher, 
         if not article_response:
             return None
 
-        article_soup = BeautifulSoup(
-            article_response, 
-            'html.parser', 
-            parse_only=SoupStrainer('div', class_='ArticleParagraph_articleParagraph__MrxYL')
-        )
+        article_soup = BeautifulSoup(article_response, 'html.parser', parse_only=SoupStrainer(['p', 'div']))
+
         text_elements, attribution = extract_text_with_spacing(str(article_soup))
         
         if not text_elements or (womens is False and (contains_word_from_list(text_elements) or contains_word_from_list(img_url))):
@@ -189,8 +189,9 @@ async def scrape_article(session, article_url, title, img_url, time, publisher, 
         return None
 
 async def scrape_news_items(team, before_id, needbeforeid, womens, lang):
-    connector = TCPConnector(limit=100, force_close=True)
-    timeout = ClientTimeout(total=30)
+    connector = TCPConnector(limit=200, force_close=False)
+    timeout = ClientTimeout(total=15)
+
     
     async with ClientSession(connector=connector, timeout=timeout) as session:
         url = f'https://api.onefootball.com/web-experience/en/team/{team}/news'
