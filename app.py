@@ -248,4 +248,3 @@ async def scrape():
 
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=False)
-  rewrite functions that would drastically improve the loading speed. i dont need the entire code js functions that need changing. i want it all to run in under atleast 2 or 3 seconds
