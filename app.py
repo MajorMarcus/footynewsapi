@@ -149,23 +149,14 @@ async def batch_rephrase_content(contents, lang):
     return results
 
 
-async def fetch(client, url):
-    try:
-        response = await client.get(url, timeout=10)
-        if response.status_code == 200:
-            return response.text
-    except httpx.RequestError as e:
-        print(f"Fetch error: {e}")
-    return None
 
-async def fetch_json(client, url):
-    try:
-        response = await client.get(url, timeout=10)
-        if response.status_code == 200:
-            return response.json()
-    except httpx.RequestError as e:
-        print(f"Fetch JSON error: {e}")
-    return None
+async def fetch(session, url):
+    async with session.get(url, timeout=10) as response:
+        return await response.text() if response.status == 200 else None
+
+async def fetch_json(session, url):
+    async with session.get(url, timeout=10) as response:
+        return await response.json() if response.status == 200 else None
 
 async def scrape_article(session, article_url, title, img_url, time, publisher, womens):
     try:
@@ -257,3 +248,4 @@ async def scrape():
 
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=False)
+  rewrite functions that would drastically improve the loading speed. i dont need the entire code js functions that need changing. i want it all to run in under atleast 2 or 3 seconds
