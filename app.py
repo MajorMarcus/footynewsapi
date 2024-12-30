@@ -115,11 +115,12 @@ async def batch_rephrase_content(contents, lang):
         prompt = (
             """Take the given football news articles and rephrase them into detailed summaries while retaining all critical information. The summaries should be concise, clear, and structured in a way that allows the reader to grasp the essential details of each article in under 1-2 minutes. Do not include any introductory text, context, or statements like 'Here are your articles' or 'Summarized content'—absolutely no unnecessary wording or indication beyond the article summaries themselves.
                 
-                Summaries must focus solely on rephrasing and simplifying the original articles while keeping all important facts intact.
+                Summaries must focus solely on rephrasing and simplifying the original article.
                 Do not number the articles or use bullet points; the only separator between individual articles should be |||.
                 Ensure no context-setting phrases or indications of the task appear in the output—strictly adhere to delivering the rephrased content.
-                Summaries should be readable, flow seamlessly, and maintain accuracy and completeness, highlighting key points without omitting vital information.
+                Summaries should be readable, flow seamlessly, and maintain accuracy and completeness
                 Use language that is straightforward and easy for the reader to understand.
+                The articles should have no resemblance to the original articles wit regard to sentence formation.
                 Every response must contain only the rephrased article contents with ||| as the separator, ensuring a smooth reading experience with no additional text or formatting.""" +
             "\n\n".join([f"Article {i+1}:\n{content}" for i, content in enumerate(batch)])
         )
