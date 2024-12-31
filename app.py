@@ -113,14 +113,11 @@ async def batch_rephrase_content(contents, lang):
     async def process_batch(client, batch, lang):
         if not batch:
             return []
-        prompt =  (
+        prompt = (
             f"Rephrase these football news articles into detailed summaries. "
-            f"DONT GIVE AN INTRO OR CONTEXT TO WHAT UR RESPONSE IS JUST AND JUST RESPOND WITH THE REPHRASED ARTICLE CONTENTS FOR SEAMLESSNESS"
+            f"DONT GIVE AN INTRO OR CONTEXT TO WHAT UR RESPONSE IS JUST AND JUST RESPOND WITH THE ARTICLE CONTENTS FOR SEAMLESSNESS"
             F"DONT GIVE ANY NUMERIC INDICATION OF THE ARTICLES JUST SEPARATE THEM WITH '|||' "
-            f"NOTHING AND ABSOLUTELY NOTHING SHOULD BE GIVEN EXCEPT THE REPHRASED ARTICLE CONTENT"
             f"Each summary should be concise and complete while retaining all essential details. AND EASY FOR THE READER TO READ IN UNDER 1 OR 2 MINUTES "
-            f"THERES NO NEED FOR A TITLE JUST RETURN THE TEXT"
-            f"BY NO MEANS SHALL U USEA BLANK LINE AS A SEPARATOR, IT SHOULD ONLY ONLY BE THE SYMBOL OF THREE VERTICAL BARS LIKE THIS '|||'"
             f"Use '|||' as a separator between articles.\n" +
             "\n\n".join([f"Article {i+1}:\n{content}" for i, content in enumerate(batch)])
         )
