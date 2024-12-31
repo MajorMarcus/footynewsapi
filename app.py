@@ -108,7 +108,7 @@ async def batch_rephrase_content(contents, lang):
     if not contents:
         return []
 
-    batch_size = 4
+    batch_size = 5
     results = []
     async def process_batch(client, batch, lang):
         if not batch:
