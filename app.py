@@ -33,6 +33,7 @@ class ProxyHttpxClient(httpx.Client):
 clients = [
     Groq(api_key=key, http_client=ProxyHttpxClient(proxies=proxies))
     for key in [
+        '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',
         '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',
         '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',
         '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',
@@ -114,9 +115,9 @@ async def batch_rephrase_content(contents, lang):
             return []
         prompt =  prompt = (
             f"Rephrase these football news articles into detailed summaries. "
-            f"DONT GIVE AN INTRO OR CONTEXT TO WHAT UR RESPONSE IS JUST AND JUST RESPOND WITH THE ARTICLE CONTENTS FOR SEAMLESSNESS"
+            f"DONT GIVE AN INTRO OR CONTEXT TO WHAT UR RESPONSE IS JUST AND JUST RESPOND WITH THE REPHRASED ARTICLE CONTENTS FOR SEAMLESSNESS"
             F"DONT GIVE ANY NUMERIC INDICATION OF THE ARTICLES JUST SEPARATE THEM WITH '|||' "
-            f"NOTHING AND ABSOLUTELY NOTHING SHOULD BE GIVEN EXCEPT THE ARTICLE CONTENT"
+            f"NOTHING AND ABSOLUTELY NOTHING SHOULD BE GIVEN EXCEPT THE REPHRASED ARTICLE CONTENT"
             f"Each summary should be concise and complete while retaining all essential details. AND EASY FOR THE READER TO READ IN UNDER 1 OR 2 MINUTES "
             f"THERES NO NEED FOR A TITLE JUST RETURN THE TEXT"
             f"BY NO MEANS SHALL U USEA BLANK LINE AS A SEPARATOR, IT SHOULD ONLY ONLY BE THE SYMBOL OF THREE VERTICAL BARS LIKE THIS '|||'"
