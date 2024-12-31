@@ -113,7 +113,7 @@ async def batch_rephrase_content(contents, lang):
     async def process_batch(client, batch, lang):
         if not batch:
             return []
-        prompt =  prompt = (
+        prompt =  (
             f"Rephrase these football news articles into detailed summaries. "
             f"DONT GIVE AN INTRO OR CONTEXT TO WHAT UR RESPONSE IS JUST AND JUST RESPOND WITH THE REPHRASED ARTICLE CONTENTS FOR SEAMLESSNESS"
             F"DONT GIVE ANY NUMERIC INDICATION OF THE ARTICLES JUST SEPARATE THEM WITH '|||' "
