@@ -116,6 +116,7 @@ async def batch_rephrase_content(contents, lang):
         prompt = (
             f"Rephrase these football news articles into detailed summaries. "
             f"DONT GIVE AN INTRO OR CONTEXT TO WHAT UR RESPONSE IS JUST AND JUST RESPOND WITH THE ARTICLE CONTENTS FOR SEAMLESSNESS"
+            f"DONT RESPOND WITH TITLES I DONT NEED THE TITLES"
             F"DONT GIVE ANY NUMERIC INDICATION OF THE ARTICLES JUST SEPARATE THEM WITH '|||' "
             f"Each summary should be concise and complete while retaining all essential details. AND EASY FOR THE READER TO READ IN UNDER 1 OR 2 MINUTES "
             f"Use '|||' as a separator between articles.\n" +
