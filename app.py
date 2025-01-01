@@ -131,7 +131,7 @@ async def batch_rephrase_content(contents, lang):
                 top_p=0,
             )
             articles = completion.choices[0].message.content.split("|||")
-            #articles = articles.split('\n\n')
+            articles = articles.split('\n\n')
             return [article.strip() for article in articles if article.strip()]
         except Exception as e:
             print(f"Error in content rephrasing: {e}")
