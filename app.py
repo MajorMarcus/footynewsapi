@@ -33,8 +33,8 @@ class ProxyHttpxClient(httpx.Client):
 clients = [
     Groq(api_key=key, http_client=ProxyHttpxClient(proxies=proxies))
     for key in [
-        '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',
-        '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',
+        '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',
+        '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',
         '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',
         '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',
         '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',
