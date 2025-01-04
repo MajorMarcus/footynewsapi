@@ -119,8 +119,7 @@ async def batch_rephrase_content(contents, lang):
     "Rephrase these football news articles into concise, reader-friendly summaries. "
     "Separate each article with '|||'. Ensure each summary is easy to read in 1-2 minutes. "
     "Do not include titles, introductions, or context.\n\n" +
-            "\n\n".join([f"Article {i+1}:\n{content}" for i, content in enumerate(batch)])
-        )
+            "\n\n".join([f"Article {i+1}:\n{content}" for i, content in enumerate(batch)]))
         try:
             completion = client.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
