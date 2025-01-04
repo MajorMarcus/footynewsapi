@@ -89,7 +89,7 @@ async def batch_rephrase_titles(titles,lang, batch_size=10,):
         try:
             completion = client.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
-                model="gemma-2-9b-instruct",
+                model="llama3-8b-8192",
                 temperature=0,
                 top_p=0,
             )
