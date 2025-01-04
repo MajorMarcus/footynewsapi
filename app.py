@@ -1,9 +1,7 @@
 from flask import Flask, request, jsonify
 from bs4 import BeautifulSoup, SoupStrainer
-import aiohttp
 import asyncio
 import urllib.parse
-import httpx
 from unidecode import unidecode
 import re
 from groq import Groq
@@ -18,23 +16,16 @@ WOMENS_WORDS = frozenset([
 ])
 PATTERN_PHOTO = re.compile(r"\(Photo by [^)]+\)")
 PATTERN_WORD = re.compile(r'\b\w+\b')
-BLOCKED_DOMAINS = frozenset(['betting', 'squawka', 'bit.ly', 'footballtoday.com'])
+BLOCKED_DOMAINS = frozenset(['betting', 'squawka', 'bit.ly', 'footballtoday.com','static.standard.co.uk'])
 
 # Proxy Configuration
-proxies = {"http://": "https://groqcall.ai/proxy/groq/v1"}
 
-class ProxyHttpxClient(httpx.Client):
-    def __init__(self, proxies=None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if proxies:
-            self.proxies = proxies
 
 # Initialize clients with connection pooling
 clients = [
-    Groq(api_key=key, http_client=ProxyHttpxClient(proxies=proxies))
+    Groq(api_key=key)
     for key in [
-        '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',
-        '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',
+        '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',
         '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',
         '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',
         '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',
@@ -49,7 +40,7 @@ def contains_word_from_list(text):
     return bool(words_in_text & WOMENS_WORDS)
 
 def extract_text_with_spacing(html_content):
-    soup = BeautifulSoup(html_content, 'html.parser', parse_only=SoupStrainer('p'))
+    soup = BeautifulSoup(html_content, 'html.parser')
     texts = []
     attribution = None
     
@@ -89,7 +80,7 @@ async def batch_rephrase_titles(titles,lang, batch_size=10,):
         try:
             completion = client.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
-                model="llama3-8b-8192",
+                model="mixtral-8x7b-32768",
                 temperature=0,
                 top_p=0,
             )
@@ -108,26 +99,28 @@ async def batch_rephrase_content(contents, lang):
     if not contents:
         return []
 
-    batch_size = 10
+    batch_size = 4
     results = []
     async def process_batch(client, batch, lang):
         if not batch:
             return []
         prompt = (
-            "Rephrase these football news articles into concise, reader-friendly summaries. "
-            "Separate each article with '|||'. Ensure each summary is easy to read in 1-2 minutes. " +
+            f"Rephrase these football news articles into detailed summaries. "
+            f"DONT GIVE AN INTRO OR CONTEXT TO WHAT UR RESPONSE IS JUST AND JUST RESPOND WITH THE ARTICLE CONTENTS FOR SEAMLESSNESS"
+            F"DONT GIVE ANY NUMERIC INDICATION OF THE ARTICLES JUST SEPARATE THEM WITH '|||' "
+            f"Each summary should be concise and complete while retaining all essential details. AND EASY FOR THE READER TO READ IN UNDER 1 OR 2 MINUTES "
+            f"Do not leave any blank line in between lines in the article. it should all be cohesive and continuous"
+            f"Use '|||' as a separator between articles.\n" +
             "\n\n".join([f"Article {i+1}:\n{content}" for i, content in enumerate(batch)])
         )
         try:
             completion = client.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
-                model="llama-3.3-70b-versatile",
-                stream=True,
+                model="llama3-8b-8192",
                 temperature=0,
                 top_p=0,
             )
             articles = completion.choices[0].message.content.split("|||")
-            articles = articles.split('\n\n')
             return [article.strip() for article in articles if article.strip()]
         except Exception as e:
             print(f"Error in content rephrasing: {e}")
@@ -145,7 +138,7 @@ async def batch_rephrase_content(contents, lang):
         for batch_result in batch_results:
             if batch_result:
                 results.extend(batch_result)
-
+    results = [i for i in results if 'Here are the ' not in i]
     return results
 
 
