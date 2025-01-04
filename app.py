@@ -108,7 +108,7 @@ async def batch_rephrase_content(contents, lang):
     if not contents:
         return []
 
-    batch_size = 4
+    batch_size = 10
     results = []
     async def process_batch(client, batch, lang):
         if not batch:
@@ -122,7 +122,8 @@ async def batch_rephrase_content(contents, lang):
         try:
             completion = client.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
-                model="llama3-8b-8192",
+                model="llama-3.3-70b-versatile",
+                stream=True,
                 temperature=0,
                 top_p=0,
             )
