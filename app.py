@@ -86,6 +86,7 @@ async def batch_rephrase_titles(titles,lang, batch_size=10,):
             )
             batch_results = [
                 content.split(". ", 1)[-1]
+                
                 for content in completion.choices[0].message.content.split("\n")
                 if ". " in content
             ]
@@ -113,6 +114,7 @@ async def batch_rephrase_content(contents, lang):
             f"Use '|||' as a separator between articles.\n" +
             "\n\n".join([f"Article {i+1}:\n{content}" for i, content in enumerate(batch)])
         )
+
         try:
             completion = client.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
@@ -121,6 +123,8 @@ async def batch_rephrase_content(contents, lang):
                 top_p=0,
             )
             articles = completion.choices[0].message.content.split("|||")
+            articles = ''.join(str(x) for x in articles)
+            articles = articles.split('\n')
             return [article.strip() for article in articles if article.strip()]
         except Exception as e:
             print(f"Error in content rephrasing: {e}")
