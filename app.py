@@ -77,24 +77,21 @@ async def batch_rephrase_titles(titles,lang, batch_size=10,):
         batch = titles[i:i + batch_size]
         client = clients[i % len(clients)]
         
-        try:
-            completion = client.chat.completions.create(
-                messages=[{"role": "user", "content": prompt}],
-                model="mixtral-8x7b-32768",
-                temperature=0,
-                top_p=0,
-            )
-            batch_results = [
-                content.split(". ", 1)[-1]
-                
-                for content in completion.choices[0].message.content.split("\n")
-                if ". " in content
-            ]
-            results.extend(batch_results)
-        except Exception as e:
-            print(f"Error in title rephrasing: {e}")
-            results.extend(batch)  # Fallback to original titles
+        completion = client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="mixtral-8x7b-32768",
+            temperature=0,
+            top_p=0,
+        )
+        batch_results = [
+            content.split(". ", 1)[-1]
             
+            for content in completion.choices[0].message.content.split("\n")
+            if ". " in content
+        ]
+        results.extend(batch_results)
+    # Fallback to original titles
+        
     return results
 async def batch_rephrase_content(contents, lang):
     if not contents:
@@ -115,20 +112,18 @@ async def batch_rephrase_content(contents, lang):
             "\n\n".join([f"Article {i+1}:\n{content}" for i, content in enumerate(batch)])
         )
 
-        try:
-            completion = client.chat.completions.create(
-                messages=[{"role": "user", "content": prompt}],
-                model="llama3-8b-8192",
-                temperature=0,
-                top_p=0,
-            )
-            articles = completion.choices[0].message.content.split("|||")
-            articles = ''.join(str(x) for x in articles)
-            articles = articles.split('\n')
-            return [article.strip() for article in articles if article.strip()]
-        except Exception as e:
-            print(f"Error in content rephrasing: {e}")
-            return batch
+        
+        completion = client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="llama3-8b-8192",
+            temperature=0,
+            top_p=0,
+        )
+        articles = completion.choices[0].message.content.split("|||")
+        articles = ''.join(str(x) for x in articles)
+        articles = articles.split('\n')
+        return [article.strip() for article in articles if article.strip()]
+
 
     for i in range(0, len(contents), batch_size * len(clients)):
         tasks = []
