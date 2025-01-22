@@ -79,7 +79,7 @@ async def batch_rephrase_titles(titles,lang, batch_size=10,):
         
         completion = client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
-            model="mixtral-8x7b-32768",
+            model="llama-3.3-70b-versatile",
             temperature=0,
             top_p=0,
         )
@@ -103,7 +103,7 @@ async def batch_rephrase_content(contents, lang):
         if not batch:
             return []
         prompt = (
-            f"Rephrase these football news articles into detailed summaries. "
+            f"Rephrase these football news articles into concise detailed summaries. "
             f"DONT GIVE AN INTRO OR CONTEXT TO WHAT UR RESPONSE IS JUST AND JUST RESPOND WITH THE ARTICLE CONTENTS FOR SEAMLESSNESS"
             F"DONT GIVE ANY NUMERIC INDICATION OF THE ARTICLES JUST SEPARATE THEM WITH '|||' "
             f"Each summary should be concise and complete while retaining all essential details. AND EASY FOR THE READER TO READ IN UNDER 1 OR 2 MINUTES "
