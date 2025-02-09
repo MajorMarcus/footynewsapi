@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 from bs4 import BeautifulSoup, SoupStrainer
+import random
 import asyncio
 import urllib.parse
 from unidecode import unidecode
@@ -123,7 +124,7 @@ async def batch_rephrase_content(contents, lang):
         articles = ''.join(str(x) for x in articles)
         articles = articles.split('\n')
         return [article.strip() for article in articles if article.strip()]
-
+    random.shuffle(clients)
 
     for i in range(0, len(contents), batch_size * len(clients)):
         tasks = []
@@ -183,6 +184,7 @@ async def scrape_article(session, article_url, title, img_url, time, publisher, 
 async def scrape_news_items(team, before_id, needbeforeid, womens, lang):
     connector = TCPConnector(limit=100, force_close=True)
     timeout = ClientTimeout(total=0)
+    
     
     async with ClientSession(connector=connector, timeout=timeout) as session:
         url = f'https://api.onefootball.com/web-experience/en/team/{team}/news'
