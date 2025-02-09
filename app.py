@@ -182,7 +182,7 @@ async def scrape_article(session, article_url, title, img_url, time, publisher, 
 
 async def scrape_news_items(team, before_id, needbeforeid, womens, lang):
     connector = TCPConnector(limit=100, force_close=True)
-    timeout = ClientTimeout(total=30)
+    timeout = ClientTimeout(total=0)
     
     async with ClientSession(connector=connector, timeout=timeout) as session:
         url = f'https://api.onefootball.com/web-experience/en/team/{team}/news'
