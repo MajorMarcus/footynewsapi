@@ -32,6 +32,8 @@ clients = [
         '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',
         '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',
         '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',
+        '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',
+        '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'
     ]
 ]
 
